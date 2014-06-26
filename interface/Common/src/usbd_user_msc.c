@@ -13,10 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+
+
 #include <RTL.h>
 #include <rl_usb.h>
 #include <string.h>
-
 #include "target_flash.h"
 #include "target_reset.h"
 #include "DAP_config.h"
@@ -27,6 +29,7 @@
 #include "version.h"
 #include "swd_host.h"
 #include "usb_buf.h"
+#include "ihex.h"
 
 #if defined(DBG_LPC1768)
 #   define WANTED_SIZE_IN_KB                        (512)
@@ -60,7 +63,10 @@
 #   define WANTED_SIZE_IN_KB                        (512)
 #elif defined(DBG_LPC11U68)
 #   define WANTED_SIZE_IN_KB                        (256)
+
 #elif defined(DBG_LPC4337)
+#   define WANTED_SIZE_IN_KB                        (1024)
+#elif defined(DBG_NRF51822)
 #   define WANTED_SIZE_IN_KB                        (1024)
 #endif
 
@@ -160,6 +166,7 @@ typedef enum {
     DOW_FILE,
     CRD_FILE,
     SPI_FILE,
+    HEX_FILE,
     UNSUP_FILE, /* Valid extension, but not supported */
     SKIP_FILE,  /* Unknown extension, typically Long File Name entries */
 } FILE_TYPE;
@@ -422,6 +429,12 @@ static uint8_t listen_msc_isr = 1;
 static uint8_t drag_success = 1;
 static uint8_t reason = 0;
 static uint32_t flash_addr_offset = 0;
+//default to HEX_FILE type for NRF    
+#if defined(DBG_NRF51822)
+static FILE_TYPE fileTypeReceived = HEX_FILE;
+#else
+static FILE_TYPE fileTypeReceived = BIN_FILE;
+#endif
 
 #define SWD_ERROR               0
 #define BAD_EXTENSION_FILE      1
@@ -430,6 +443,7 @@ static uint32_t flash_addr_offset = 0;
 #define RESERVED_BITS           4
 #define BAD_START_SECTOR        5
 #define TIMEOUT                 6
+#define CORRUPT_FILE            7
 
 static uint8_t * reason_array[] = {
     "SWD ERROR",
@@ -439,6 +453,7 @@ static uint8_t * reason_array[] = {
     "RESERVED BITS",
     "BAD START SECTOR",
     "TIMEOUT",
+    "CORRUPT FILE"
 };
 
 #define MSC_TIMEOUT_SPLIT_FILES_EVENT   (0x1000)
@@ -538,6 +553,12 @@ void init(uint8_t jtag) {
     USBD_MSC_BlockBuf   = (uint8_t *)usb_buffer;
     listen_msc_isr = 1;
     flash_addr_offset = 0;
+    
+    //default to HEX_FILE type for NRF
+#if defined(DBG_NRF51822)
+    fileTypeReceived = HEX_FILE;
+    ihex_init();
+#endif
 }
 
 void failSWD() {
@@ -565,27 +586,24 @@ static void initDisconnect(uint8_t success) {
 #else
     int autorst = 0;
 #endif
+
     drag_success = success;
-    if (autorst)
+    if (autorst && success){
         swd_set_target_state(RESET_RUN);
+    }
     main_blink_msd_led(0);
     init(1);
     isr_evt_set(MSC_TIMEOUT_STOP_EVENT, msc_valid_file_timeout_task_id);
-    if (!autorst)
-    {
-        // event to disconnect the usb
-        main_usb_disconnect_event();
-    }
+    main_usb_disconnect_event();
     semihost_enable();
 }
 
 extern uint32_t SystemCoreClock;
 
-int jtag_init() {
+int jtag_init(void) {
     if (DAP_Data.debug_port != DAP_PORT_DISABLED) {
         need_restart_usb = 1;
     }
-
     if ((jtag_flash_init != 1) && (DAP_Data.debug_port == DAP_PORT_DISABLED)) {
         if (need_restart_usb == 1) {
             reason = SWD_PORT_IN_USE;
@@ -594,20 +612,16 @@ int jtag_init() {
         }
 
         semihost_disable();
-
         PORT_SWD_SETUP();
-
         target_set_state(RESET_PROGRAM);
         if (!target_flash_init(SystemCoreClock)) {
             failSWD();
             return 1;
         }
-
         jtag_flash_init = 1;
     }
     return 0;
 }
-
 
 static const FILE_TYPE_MAPPING file_type_infos[] = {
     { BIN_FILE, {'B', 'I', 'N'}, 0x00000000 },
@@ -615,6 +629,8 @@ static const FILE_TYPE_MAPPING file_type_infos[] = {
     { PAR_FILE, {'P', 'A', 'R'}, 0x00000000 },//strange extension on win IE 9...
     { DOW_FILE, {'D', 'O', 'W'}, 0x00000000 },//strange extension on mac...
     { CRD_FILE, {'C', 'R', 'D'}, 0x00000000 },//strange extension on linux...
+    { HEX_FILE, {'H', 'E', 'X'}, 0x00000000 },
+    { HEX_FILE, {'h', 'e', 'x'}, 0x00000000 },
     { UNSUP_FILE, {0,0,0},     0            },//end of table marker
 };
 
@@ -685,9 +701,10 @@ int search_bin_file(uint8_t * root, uint8_t sector) {
         // Determine file type and get the flash offset
         file_type = get_file_type(&pDirEnts[i], &offset);
 
-        if (file_type == BIN_FILE || file_type == PAR_FILE ||
+        if (file_type == BIN_FILE || file_type == PAR_FILE || file_type == HEX_FILE || 
             file_type == DOW_FILE || file_type == CRD_FILE || file_type == SPI_FILE) {
-
+            fileTypeReceived = file_type;
+            
             hidden_file = (pDirEnts[i].attributes & 0x02) ? 1 : 0;
 
             // compute the size of the file
@@ -838,45 +855,76 @@ void usbd_msc_read_sect (uint32_t block, uint8_t *buf, uint32_t num_of_blocks) {
     }
 }
 
-static int programPage() {
-    //The timeout task's timer is resetted every 256kB that is flashed.
-    if ((flashPtr >= 0x40000) && ((flashPtr & 0x3ffff) == 0)) {
-        isr_evt_set(MSC_TIMEOUT_RESTART_EVENT, msc_valid_file_timeout_task_id);
+static int programPage() {    
+    isr_evt_set(MSC_TIMEOUT_RESTART_EVENT, msc_valid_file_timeout_task_id);
+    
+#ifdef DBG_NRF51822
+    //We need to process the data if it's from a HEX file....
+    if(fileTypeReceived == HEX_FILE)
+    {
+       int result = ihex_parse_hex_page((uint8_t *)usb_buffer, sizeof(usb_buffer));
+       if (0 == result) {
+           return 0;
+       } else if (1 == result) {
+           initDisconnect(1);
+           return 0;
+       }
+       
+       if (-1 == result) {
+           reason = CORRUPT_FILE;           
+       } else {
+           reason = SWD_ERROR;
+       }
+       
+       initDisconnect(0);
+       return 1;
     }
-
-    // if we have received two sectors, write into flash
-    if (!target_flash_program_page(flashPtr + flash_addr_offset, (uint8_t *)usb_buffer, FLASH_PROGRAM_PAGE_SIZE)) {
-        // even if there is an error, adapt flashptr
-        flashPtr += FLASH_PROGRAM_PAGE_SIZE;
-        return 1;
+    else
+#endif
+    {
+        // if we have received two sectors, write into flash
+        if (!target_flash_program_page(flashPtr + flash_addr_offset, (uint8_t *)usb_buffer, FLASH_PROGRAM_PAGE_SIZE)) {
+            // even if there is an error, adapt flashptr
+            flashPtr += FLASH_PROGRAM_PAGE_SIZE;
+            return 1;
+        }   
     }
-
     // if we just wrote the last sector -> disconnect usb
     if (current_sector == nb_sector) {
         initDisconnect(1);
         return 0;
     }
-
     flashPtr += FLASH_PROGRAM_PAGE_SIZE;
-
     return 0;
 }
 
 
 void usbd_msc_write_sect (uint32_t block, uint8_t *buf, uint32_t num_of_blocks) {
     int idx_size = 0;
+    uint32_t buf_flash_addr_offset;
+    uint32_t buf_nb_sector;
 
     if ((usb_state != USB_CONNECTED) || (listen_msc_isr == 0))
+    {
         return;
-
-    // we recieve the root directory
+    }
+        
+    //we received the root directory
     if ((block == SECTORS_ROOT_IDX) || (block == (SECTORS_ROOT_IDX+1))) {
-        // try to find a .bin file in the root directory
+        //try to find a valid file
+        buf_flash_addr_offset = flash_addr_offset;
+        buf_nb_sector = nb_sector;
         idx_size = search_bin_file(buf, block);
-
-        // .bin file exists
+        
+        //a valid file exits
+        
+        if(nb_sector >0 && nb_sector <=  current_sector && buf_nb_sector == 0 && fileTypeReceived == HEX_FILE){
+            usb_buffer[0]=0;
+            flash_addr_offset = buf_flash_addr_offset;
+            programPage();
+        }
+        
         if (idx_size != -1) {
-
             if (sector_received_first == 0) {
                 root_dir_received_first = 1;
             }
@@ -899,8 +947,8 @@ void usbd_msc_write_sect (uint32_t block, uint8_t *buf, uint32_t num_of_blocks) 
             }
         }
     }
-    if (block >= SECTORS_ERROR_FILE_IDX) {
 
+    if (block >= SECTORS_ERROR_FILE_IDX) {
         main_usb_busy_event();
 
         if (root_dir_received_first == 0) {
@@ -918,22 +966,23 @@ void usbd_msc_write_sect (uint32_t block, uint8_t *buf, uint32_t num_of_blocks) 
             theoretical_start_sector = block;
         }
 
-        // init jtag if needed
         if (jtag_init() == 1) {
             return;
         }
 
         if (jtag_flash_init == 1) {
-
             main_blink_msd_led(1);
-
             // We erase the chip if we received unrelated data before (mac compatibility)
             if (maybe_erase && (block == theoretical_start_sector)) {
                 // avoid erasing the internal flash if only the external flash will be updated
                 if (flash_addr_offset == 0) {
-                    if (!target_flash_erase_chip()) {
-                    return;
-                    }
+#ifndef DBG_NRF51822
+                     if (!target_flash_erase_chip()) {
+                         reason = SWD_ERROR;
+                         initDisconnect(0);
+                         return;
+                     }
+#endif
                 }
                 maybe_erase = 0;
                 program_page_error = 0;
@@ -974,9 +1023,13 @@ void usbd_msc_write_sect (uint32_t block, uint8_t *buf, uint32_t num_of_blocks) 
             if (flash_started && (block == theoretical_start_sector)) {
                 // avoid erasing the internal flash if only the external flash will be updated
                 if (flash_addr_offset == 0) {
-                    if (!target_flash_erase_chip()) {
-                    return;
-                    }
+#ifndef DBG_NRF51822
+                     if (target_flash_erase_chip() == 0) {
+                         reason = SWD_ERROR;
+                         initDisconnect(0);
+                         return;
+                     }
+#endif
                 }
                 maybe_erase = 0;
                 program_page_error = 0;

@@ -829,11 +829,19 @@ uint8_t swd_set_target_state(TARGET_RESET_STATE state) {
             break;
 
         case RESET_RUN:
+#if defined(SOFT_RESET)
+            if (!swd_init_debug()) {
+                return 0;
+            }
+            //SysReset
+            swd_write_word(NVIC_AIRCR, VECTKEY | SYSRESETREQ);
+#else
             swd_set_target_reset(1);
             os_dly_wait(2);
 
             swd_set_target_reset(0);
             os_dly_wait(2);
+#endif
             break;
 
         case RESET_RUN_WITH_DEBUG:
@@ -913,7 +921,7 @@ uint8_t swd_set_target_state(TARGET_RESET_STATE state) {
             }
 
 	        // Perform a soft reset
-            if (!swd_write_word(NVIC_AIRCR, VECTKEY | SOFT_RESET)) {
+            if (!swd_write_word(NVIC_AIRCR, VECTKEY | SYSRESETREQ)) {
                 return 0;
             }
 #endif
