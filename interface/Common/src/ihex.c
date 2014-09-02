@@ -149,7 +149,9 @@ int ihex_parse_hex_page(uint8_t *buf, int len)
             
             if (ELA_RECORD == r.record_type) {
                 bin_high_address = ((r.data[0] << 8) + r.data[1]) << 16;
-            } else if (EOF_RECORD == r.record_type) {
+            } else if (ESA_RECORD == r.record_type) {
+                bin_high_address = ((r.data[0] << 8) + r.data[1]) << 4;
+            }else if (EOF_RECORD == r.record_type) {
                 return 1;
             }
         }
