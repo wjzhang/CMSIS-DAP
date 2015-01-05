@@ -1,5 +1,5 @@
 
-#ifdef DBG_NRF51822
+#if defined(DBG_NRF51822) || defined(DBG_STM32F103RC)
 
 #include <string.h>
 #include <absacc.h>
@@ -7,7 +7,12 @@
 #include "target_flash.h"
 
 
+#if defined(DBG_STM32F103RC)
+#define PAGE_SIZE   512
+#else
 #define PAGE_SIZE   FLASH_SECTOR_SIZE
+#endif
+
 #define LINE_SIZE   64
 
 #define IHEX_RECORD_MAX_DATA    32
@@ -55,7 +60,12 @@ int  line_len = 0;
 
 ihex_record_t r;
 
+#if defined(DBG_STM32F103RC)
+uint8_t  bin_buffer[PAGE_SIZE] __at(0x20000000 + 512);		//usb_buffer at [0x20000000, 0x2000200]
+#else
 uint8_t  bin_buffer[PAGE_SIZE] __at(0x20000000 + PAGE_SIZE);
+#endif
+
 uint16_t bin_data_index   = 0;
 uint32_t bin_low_address  = 0;
 uint32_t bin_high_address = 0;

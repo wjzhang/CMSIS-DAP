@@ -48,8 +48,10 @@ int32_t uart_initialize (void) {
     LPC_SYSCON->UARTCLKDIV = (1UL << 0);
 
     // alternate function USART and PullNone
-    LPC_IOCON->PIO0_18 |= 0x01;
-    LPC_IOCON->PIO0_19 |= 0x01;
+    LPC_IOCON->PIO0_18 |= 0x01; // RXD
+    LPC_IOCON->PIO0_19 |= 0x01; // TXD
+    LPC_IOCON->PIO0_7  = 0x11; // CTS
+    LPC_IOCON->PIO0_17 = 0x11; // RTS
 
     // enable FIFOs (trigger level 1) and clear them
     LPC_USART->FCR = 0x87;
@@ -205,6 +207,15 @@ int32_t uart_set_configuration (UART_Configuration *config) {
                    | (stop_bits << 2)
                    | (parity << 3);
 
+
+#if defined(BOARD_DT01)
+    // disable RTS and CTS flow control
+    LPC_USART->MCR = 0x00;
+#else
+    // Set RTS/CTS
+    LPC_USART->MCR = (0x01 << 7) | (0x01 << 6); // Enable RTS and CTS flow control
+#endif
+		
     // Enable UART interrupt
     NVIC_EnableIRQ (UART_IRQn);
 

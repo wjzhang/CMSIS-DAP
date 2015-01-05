@@ -48,7 +48,7 @@
 // Some targets require a soft reset for flash programming (RESET_PROGRAM).
 // Otherwise a hardware reset is the default. This will not affect
 // DAP operations as they are controlled by the remote debugger.
-#if defined(BOARD_BAMBINO_210) || defined(BOARD_BAMBINO_210E)
+#if defined(BOARD_BAMBINO_210) || defined(BOARD_BAMBINO_210E) || defined(BOARD_ARCH_BLE) || defined(BOARD_DT01)
 #define CONF_SYSRESETREQ
 #elif defined(BOARD_LPC4337)
 #define CONF_VECTRESET
@@ -833,8 +833,19 @@ uint8_t swd_set_target_state(TARGET_RESET_STATE state) {
             if (!swd_init_debug()) {
                 return 0;
             }
+						
+#if defined(DBG_NRF51822)
+						if(DAP_Data.debug_port == DAP_PORT_DISABLED)
+						{
+							//enable debug
+							swd_write_word(DBG_HCSR, DBGKEY | C_DEBUGEN);
+							//disable halt reset
+							swd_write_word(DBG_EMCR, 0);
+						}							
+#endif				
             //SysReset
             swd_write_word(NVIC_AIRCR, VECTKEY | SYSRESETREQ);
+						
 #else
             swd_set_target_reset(1);
             os_dly_wait(2);

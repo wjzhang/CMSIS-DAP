@@ -70,6 +70,8 @@
 #   define WANTED_SIZE_IN_KB                        (1024)
 #elif defined(DBG_NRF51822)
 #   define WANTED_SIZE_IN_KB                        (1024)
+#elif defined(DBG_STM32F103RC)
+#   define WANTED_SIZE_IN_KB                        (2048)
 #endif
 
 //------------------------------------------------------------------- CONSTANTS
@@ -554,10 +556,14 @@ void init(uint8_t jtag) {
     msc_event_timeout = 0;
     USBD_MSC_BlockBuf   = (uint8_t *)usb_buffer;
     listen_msc_isr = 1;
+#if defined(DBG_STM32F103RC)
+		flash_addr_offset = TARGET_FALSH_BASE_ADDR;
+#else
     flash_addr_offset = 0;
+#endif
     
     //default to HEX_FILE type for NRF
-#if defined(DBG_NRF51822)
+#if defined(DBG_NRF51822) || defined(DBG_STM32F103RC)
     fileTypeReceived = HEX_FILE;
     ihex_init();
 #endif
@@ -586,7 +592,8 @@ static void initDisconnect(uint8_t success) {
         enter_isp();
     }
 #else
-    int autorst = 0;
+		//when finished flash firmware, it should reset run;
+    int autorst = 1;
 #endif
 
     drag_success = success;
@@ -763,6 +770,17 @@ int search_bin_file(uint8_t * root, uint8_t sector) {
                 move_sector_start = (begin_sector - start_sector)*MBR_BYTES_PER_SECTOR;
                 nb_sector_to_move = (nb_sector % 2) ? nb_sector/2 + 1 : nb_sector/2;
                 for (i = 0; i < nb_sector_to_move; i++) {
+#if defined(TARGET_LPC11U35) && defined(DBG_STM32F103RC)
+                    if (!swd_read_memory(TARGET_FALSH_BASE_ADDR + move_sector_start + i*FLASH_USB_SECTOR_SIZE, (uint8_t *)usb_buffer, FLASH_USB_SECTOR_SIZE)) {
+                        failSWD();
+                        return -1;
+                    }
+
+                    if (!target_flash_program_page(TARGET_FALSH_BASE_ADDR + i*FLASH_USB_SECTOR_SIZE, (uint8_t *)usb_buffer, FLASH_USB_SECTOR_SIZE)) {
+                        failSWD();
+                        return -1;
+                    }										
+#else									
                     if (!swd_read_memory(move_sector_start + i*FLASH_SECTOR_SIZE, (uint8_t *)usb_buffer, FLASH_SECTOR_SIZE)) {
                         failSWD();
                         return -1;
@@ -775,6 +793,7 @@ int search_bin_file(uint8_t * root, uint8_t sector) {
                         failSWD();
                         return -1;
                     }
+#endif
                 }
                 initDisconnect(1);
                 return -1;
@@ -860,10 +879,11 @@ void usbd_msc_read_sect (uint32_t block, uint8_t *buf, uint32_t num_of_blocks) {
 static int programPage() {    
     isr_evt_set(MSC_TIMEOUT_RESTART_EVENT, msc_valid_file_timeout_task_id);
     
-#ifdef DBG_NRF51822
+#if defined(DBG_NRF51822) || defined(DBG_STM32F103RC)
     //We need to process the data if it's from a HEX file....
     if(fileTypeReceived == HEX_FILE)
     {
+       //each sector is 512 byte. sizeof(usb_buffer) <= 512
        int result = ihex_parse_hex_page((uint8_t *)usb_buffer, sizeof(usb_buffer));
        if (0 == result) {
            return 0;
@@ -871,13 +891,13 @@ static int programPage() {
            initDisconnect(1);
            return 0;
        }
-       
+    
        if (-1 == result) {
            reason = CORRUPT_FILE;           
        } else {
            reason = SWD_ERROR;
        }
-       
+			 
        initDisconnect(0);
        return 1;
     }

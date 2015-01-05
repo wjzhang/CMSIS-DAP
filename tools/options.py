@@ -27,7 +27,9 @@ TARGETS = ['LPC812',
            'KL25Z',
            'K64F',
            'K22F',
-           'K24F256']
+           'K24F256',
+		   'NRF51822AA', 
+		   'STM32F103RC']
 
 
 def options_parser():
