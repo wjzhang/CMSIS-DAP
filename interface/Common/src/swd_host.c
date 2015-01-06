@@ -844,7 +844,7 @@ uint8_t swd_set_target_state(TARGET_RESET_STATE state) {
 						}							
 #endif				
             //SysReset
-            swd_write_word(NVIC_AIRCR, VECTKEY | SYSRESETREQ);
+            swd_write_word(NVIC_AIRCR, VECTKEY | SOFT_RESET);
 						
 #else
             swd_set_target_reset(1);
@@ -873,11 +873,17 @@ uint8_t swd_set_target_state(TARGET_RESET_STATE state) {
             }
 
             // Reset again
+#ifndef DBG_NRF51822
             swd_set_target_reset(1);
             os_dly_wait(1);
 
             swd_set_target_reset(0);
             os_dly_wait(1);
+#else
+            if (!swd_write_word(NVIC_AIRCR, VECTKEY | SOFT_RESET)) {
+                return 0;
+            }
+#endif
             break;
 
         case RESET_PROGRAM:
@@ -905,10 +911,13 @@ uint8_t swd_set_target_state(TARGET_RESET_STATE state) {
             }
 
             // Reset again
+#ifndef DBG_NRF51822
             swd_set_target_reset(1);
             os_dly_wait(2);
 
             swd_set_target_reset(0);
+#endif
+
 #else            
             if (!swd_init_debug()) {
                 return 0;
@@ -932,7 +941,7 @@ uint8_t swd_set_target_state(TARGET_RESET_STATE state) {
             }
 
 	        // Perform a soft reset
-            if (!swd_write_word(NVIC_AIRCR, VECTKEY | SYSRESETREQ)) {
+            if (!swd_write_word(NVIC_AIRCR, VECTKEY | SOFT_RESET)) {
                 return 0;
             }
 #endif

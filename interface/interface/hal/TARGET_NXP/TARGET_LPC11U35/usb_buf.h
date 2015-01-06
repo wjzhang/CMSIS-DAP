@@ -19,7 +19,7 @@
 #include <absacc.h>
 #include <stdint.h>
 
-#if defined(TARGET_LPC11U35) && defined(DBG_STM32F103RC)
+#if defined(TARGET_LPC11U35) && (defined(DBG_STM32F103RC) || defined(DBG_STM32F051))
 /* For Mass storage, each sector is 512 Byte.
  * and LPC11U35 only 2K. also need buffer for iHex function 
 */

@@ -72,6 +72,8 @@
 #   define WANTED_SIZE_IN_KB                        (1024)
 #elif defined(DBG_STM32F103RC)
 #   define WANTED_SIZE_IN_KB                        (2048)
+#elif defined(DBG_STM32F051)
+#   define WANTED_SIZE_IN_KB                        (512)
 #endif
 
 //------------------------------------------------------------------- CONSTANTS
@@ -556,14 +558,14 @@ void init(uint8_t jtag) {
     msc_event_timeout = 0;
     USBD_MSC_BlockBuf   = (uint8_t *)usb_buffer;
     listen_msc_isr = 1;
-#if defined(DBG_STM32F103RC)
+#if defined(DBG_STM32F103RC) || defined(DBG_STM32F051)
 		flash_addr_offset = TARGET_FALSH_BASE_ADDR;
 #else
     flash_addr_offset = 0;
 #endif
     
     //default to HEX_FILE type for NRF
-#if defined(DBG_NRF51822) || defined(DBG_STM32F103RC)
+#if defined(DBG_NRF51822) || defined(DBG_STM32F103RC) || defined(DBG_STM32F051)
     fileTypeReceived = HEX_FILE;
     ihex_init();
 #endif
@@ -770,7 +772,7 @@ int search_bin_file(uint8_t * root, uint8_t sector) {
                 move_sector_start = (begin_sector - start_sector)*MBR_BYTES_PER_SECTOR;
                 nb_sector_to_move = (nb_sector % 2) ? nb_sector/2 + 1 : nb_sector/2;
                 for (i = 0; i < nb_sector_to_move; i++) {
-#if defined(TARGET_LPC11U35) && defined(DBG_STM32F103RC)
+#if defined(TARGET_LPC11U35) && (defined(DBG_STM32F103RC) || defined(DBG_STM32F051))
                     if (!swd_read_memory(TARGET_FALSH_BASE_ADDR + move_sector_start + i*FLASH_USB_SECTOR_SIZE, (uint8_t *)usb_buffer, FLASH_USB_SECTOR_SIZE)) {
                         failSWD();
                         return -1;
@@ -879,7 +881,7 @@ void usbd_msc_read_sect (uint32_t block, uint8_t *buf, uint32_t num_of_blocks) {
 static int programPage() {    
     isr_evt_set(MSC_TIMEOUT_RESTART_EVENT, msc_valid_file_timeout_task_id);
     
-#if defined(DBG_NRF51822) || defined(DBG_STM32F103RC)
+#if defined(DBG_NRF51822) || defined(DBG_STM32F103RC) || defined(DBG_STM32F051)
     //We need to process the data if it's from a HEX file....
     if(fileTypeReceived == HEX_FILE)
     {
@@ -946,6 +948,7 @@ void usbd_msc_write_sect (uint32_t block, uint8_t *buf, uint32_t num_of_blocks) 
             programPage();
         }
         
+        // .bin file exists
         if (idx_size != -1) {
             if (sector_received_first == 0) {
                 root_dir_received_first = 1;
@@ -988,6 +991,7 @@ void usbd_msc_write_sect (uint32_t block, uint8_t *buf, uint32_t num_of_blocks) 
             theoretical_start_sector = block;
         }
 
+        // init jtag if needed
         if (jtag_init() == 1) {
             return;
         }
