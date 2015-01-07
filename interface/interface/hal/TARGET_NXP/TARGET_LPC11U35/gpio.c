@@ -29,16 +29,9 @@ static OS_TID isr_notify;
 
 #ifdef SW_RESET_BUTTON
 
-#if defined(BOARD_ARCH_BLE) ||  defined(BOARD_DT01)
-#ifdef  OLD_MB2100
-#define RESET_PORT        (0)
-#define RESET_PIN         (1)
-#else
+#if defined(BOARD_BB200X) ||  defined(BOARD_DT01)
 #define RESET_PORT        (0)
 #define RESET_PIN         (2)
-#warning "using p02 as Reset pin"
-#endif
-
 #else 
 #define RESET_PORT        (1)
 #define RESET_PIN         (19)
@@ -46,7 +39,8 @@ static OS_TID isr_notify;
 
 #define RESET_INT_CH      (0)
 #define RESET_INT_MASK    (1 << RESET_INT_CH)
-#endif
+
+#endif	//(SW_RESET_BUTTON)
 
 #define PIN_DAP_LED       (1<<21)
 #define PIN_MSD_LED       (1<<20)

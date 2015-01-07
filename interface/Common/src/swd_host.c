@@ -48,7 +48,7 @@
 // Some targets require a soft reset for flash programming (RESET_PROGRAM).
 // Otherwise a hardware reset is the default. This will not affect
 // DAP operations as they are controlled by the remote debugger.
-#if defined(BOARD_BAMBINO_210) || defined(BOARD_BAMBINO_210E) || defined(BOARD_ARCH_BLE) || defined(BOARD_DT01)
+#if defined(BOARD_BAMBINO_210) || defined(BOARD_BAMBINO_210E) || defined(BOARD_BB200X) || defined(BOARD_DT01)
 #define CONF_SYSRESETREQ
 #elif defined(BOARD_LPC4337)
 #define CONF_VECTRESET

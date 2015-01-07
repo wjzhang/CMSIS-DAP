@@ -94,7 +94,7 @@
 #define BOARD_ID        "1062"
 #define BOARD_SECRET    "xxxxxxxx"
 
-#elif defined (BOARD_ARCH_BLE)
+#elif defined (BOARD_BB200X)
 #define BOARD_ID        "9009"
 #define BOARD_SECRET    "xxxxxxxx"
 

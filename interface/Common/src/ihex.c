@@ -60,11 +60,8 @@ int  line_len = 0;
 
 ihex_record_t r;
 
-#if defined(DBG_STM32F103RC) || defined(DBG_STM32F051)
-uint8_t  bin_buffer[PAGE_SIZE] __at(0x20000000 + 512);		//usb_buffer at [0x20000000, 0x2000200]
-#else
-uint8_t  bin_buffer[PAGE_SIZE] __at(0x20000000 + PAGE_SIZE);
-#endif
+uint8_t  bin_buffer[PAGE_SIZE] __at(0x20000000 + PAGE_SIZE);	//usb_buffer at [0x20000000, 0x2000200]
+
 
 uint16_t bin_data_index   = 0;
 uint32_t bin_low_address  = 0;

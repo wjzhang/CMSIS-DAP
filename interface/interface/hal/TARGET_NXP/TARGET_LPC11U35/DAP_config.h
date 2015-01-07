@@ -114,6 +114,7 @@ Provides definitions about:
 #define PULL_UP_ENABLED			(2 << 3)
 #define OPENDRAIN				(1 << 10)
 
+#if defined(BOARD_DT01) || defined(BOARD_BB200X)
 // Debug Port I/O Pins
 // For LPC11Uxx DAPs all SWD and JTAG pins are on GPIO port 0
 // Default is mbed HDK reference design with LPC11U35/501
@@ -144,6 +145,40 @@ Provides definitions about:
 #define PIN_TDO                 (1 << PIN_TDO_IN_BIT)
 #define PIN_TDO_IOCON           LPC_IOCON->PIO0_9
 #endif // (DAP_JTAG != 0)
+
+#else
+// Debug Port I/O Pins
+// For LPC11Uxx DAPs all SWD and JTAG pins are on GPIO port 0
+// Default is mbed HDK reference design with LPC11U35/501
+// SWCLK/TCK Pin                PIO0_7
+#define PIN_SWCLK_IN_BIT        7
+#define PIN_SWCLK               (1 << PIN_SWCLK_IN_BIT)
+#define PIN_SWCLK_TCK_IOCON     LPC_IOCON->PIO0_7
+
+// SWDIO/TMS In/Out Pin         PIO0_8
+#define PIN_SWDIO_IN_BIT        8
+#define PIN_SWDIO               (1 << PIN_SWDIO_IN_BIT)
+#define PIN_SWDIO_TMS_IOCON     LPC_IOCON->PIO0_8
+
+// nRESET Pin                   PIO0_2
+#define PIN_nRESET_IN_BIT       2
+#define PIN_nRESET              (1 << PIN_nRESET_IN_BIT)
+#define PIN_nRESET_IOCON        LPC_IOCON->PIO0_2
+
+#if (DAP_JTAG != 0)
+
+// TDI Pin                      PIO0_17
+#define PIN_TDI_IN_BIT          17
+#define PIN_TDI                 (1 << PIN_TDI_IN_BIT)
+#define PIN_TDI_IOCON           LPC_IOCON->PIO0_17
+
+// SWO/TDO Pin                  PIO0_9
+#define PIN_TDO_IN_BIT          9
+#define PIN_TDO                 (1 << PIN_TDO_IN_BIT)
+#define PIN_TDO_IOCON           LPC_IOCON->PIO0_9
+#endif // (DAP_JTAG != 0)
+
+#endif	// (defined(BOARD_DT01) || defined(BOARD_BB200X))
 
 //**************************************************************************************************
 /**
