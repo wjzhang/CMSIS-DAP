@@ -1,5 +1,5 @@
 
-#if defined(DBG_NRF51822) || defined(DBG_STM32F103RC) || defined(DBG_STM32F051)
+#if defined(DBG_NRF51822) || defined(DBG_STM32F103RC) || defined(DBG_STM32F051) || defined(DBG_STM32F405)
 
 #include <string.h>
 #include <absacc.h>
@@ -7,7 +7,7 @@
 #include "target_flash.h"
 
 
-#if defined(DBG_STM32F103RC) || defined(DBG_STM32F051)
+#if defined(DBG_STM32F103RC) || defined(DBG_STM32F051) || defined(DBG_STM32F405)
 #define PAGE_SIZE   512
 #else
 #define PAGE_SIZE   FLASH_SECTOR_SIZE

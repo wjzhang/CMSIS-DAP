@@ -101,6 +101,9 @@
 #elif defined(DBG_STM32F103RC)
 #define BOARD_ID        "1081"
 #define BOARD_SECRET    "xxxxxxxx"
+#elif defined(DBG_STM32F405)
+#define BOARD_ID        "2001"
+#define BOARD_SECRET    "xxxxxxxx"
 #endif
 
 #elif defined (BOARD_DT01)
@@ -112,6 +115,9 @@
 #define BOARD_SECRET    "xxxxxxxx"
 #elif defined(DBG_STM32F051)
 #define BOARD_ID        "1090"
+#define BOARD_SECRET    "xxxxxxxx"
+#elif defined(DBG_STM32F405)
+#define BOARD_ID        "2000"
 #define BOARD_SECRET    "xxxxxxxx"
 #endif
 
