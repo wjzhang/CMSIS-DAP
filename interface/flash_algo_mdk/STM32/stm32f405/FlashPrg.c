@@ -66,6 +66,7 @@
 #define FLASH_CR_16_SIZE		 0x00000100
 #define FLASH_CR_32_SIZE		 0x00000200
 #define FLASH_CR_64_SIZE		 0x00000300
+#define FLASH_CR_SIZE_MASK	 0x00000300
 
 #define FLASH_CR_STRT        0x00010000
 #define FLASH_CR_LOCK        0x80000000
@@ -174,8 +175,9 @@ int EraseChip (void) {
 		sr = FLASH_SR_REG;
 	}while((sr & FLASH_SR_BSY) == FLASH_SR_BSY);
 	
-	/*first set MER bit, then set STRT bit*/
+	/*first clear PG size, set MER bit, then set STRT bit*/
 	cr = FLASH_CR_REG;
+	cr &= ~FLASH_CR_SIZE_MASK;
 	cr |= FLASH_CR_MER;
 	FLASH_CR_REG = cr;
 	
@@ -220,11 +222,10 @@ int EraseSector (unsigned long adr) {
 	/*first set SER bit, erase sector, last set STRT bit*/
 	sector = getSector(adr);	
 	cr = FLASH_CR_REG;
-	cr &= ~FLASH_CR_SNB_MASK;
-	cr |= FLASH_CR_SER | (sector << FLASH_CR_SNB_SHIFT);
+	cr &= ~(FLASH_CR_SIZE_MASK | FLASH_CR_SNB_MASK);
+	cr |= (FLASH_CR_SER | (sector << FLASH_CR_SNB_SHIFT) | FLASH_CR_32_SIZE);
 	FLASH_CR_REG = cr;
 	 
-	
 	cr = FLASH_CR_REG;
 	cr |= FLASH_CR_STRT;
 	FLASH_CR_REG = cr;	
@@ -250,14 +251,16 @@ int EraseSector (unsigned long adr) {
  *    Return Value:   0 - OK,  1 - Failed
  */
 int ProgramPage (unsigned long adr, unsigned long sz, unsigned char *buf) {
-  volatile U16* pDest;
-  volatile U16* pSrc;
+  volatile U32* p32Dest;
+  volatile U32* p32Src;
+  volatile U16* p16Dest;
+  volatile U16* p16Src;
 	U32 cr = 0;
 	U32 sr = 0;
 	unsigned long i = 0;
 	
-  pDest = (volatile U16*)adr;
-  pSrc = (volatile U16*)buf;    // Always 32-bit aligned. Made sure by CMSIS-DAP firmware
+  p32Dest = (volatile U32*)adr;
+  p32Src = (volatile U32*)buf;    // Always 32-bit aligned. Made sure by CMSIS-DAP firmware
 	//
 	// adr is always aligned to "Programming Page Size" specified in table in FlashDev.c
   // sz is always a multiple of "Programming Page Size"
@@ -273,38 +276,70 @@ int ProgramPage (unsigned long adr, unsigned long sz, unsigned char *buf) {
 		sr = FLASH_SR_REG;
 	}while((sr & FLASH_SR_BSY) == FLASH_SR_BSY);	
 
+	//clear Program size
+	cr = FLASH_CR_REG;
+	cr &= ~FLASH_CR_SIZE_MASK;
+	FLASH_CR_REG = cr;
 	
-	while(i < sz/2 )
+	while(i < sz/4 )
 	{
-		/*first set PG bit/Program size: 16bit in CR, then write data to flash address*/
+		/*first set PG bit/Program size: 32bit in CR, then write data to flash address*/
 		cr = FLASH_CR_REG;
-		cr |= (FLASH_CR_PG | FLASH_CR_16_SIZE);
+		cr |= (FLASH_CR_PG | FLASH_CR_32_SIZE);
 		FLASH_CR_REG = cr;
 		
-		*pDest = *pSrc;
+		*p32Dest = *p32Src;
 		/*wait SR BSY cleared*/
 		do{
 			sr = FLASH_SR_REG;
 		}while((sr & FLASH_SR_BSY) == FLASH_SR_BSY);
 		
 		/*check program word is ok*/
-		if(*pSrc != *pDest)
+		if(*p32Src != *p32Dest)
 		{
 			/*clear PG bit*/
 			cr = FLASH_CR_REG;
-			cr &= ~FLASH_CR_PG;
+			cr &= ~(FLASH_CR_PG | FLASH_CR_SIZE_MASK);
 			FLASH_CR_REG = cr;	
 			
 			return 1;
 		}
-		pDest++;
-		pSrc++;
+		p32Dest++;
+		p32Src++;
 		i++;	
 	}
+	//half word
+	if(sz%4 != 0)
+	{
+		p16Dest = (volatile U16*)p32Dest;
+		p16Src  = (volatile U16*)p32Src;
+		/*set PG bit/Program size: 16 bit in CR, then write data to flash address*/
+		cr = FLASH_CR_REG;
+		cr &= ~FLASH_CR_SIZE_MASK;
+		cr |= (FLASH_CR_PG | FLASH_CR_16_SIZE);
+		FLASH_CR_REG = cr;
+		
+		*p16Dest = *p16Src;
+		/*wait SR BSY cleared*/
+		do{
+			sr = FLASH_SR_REG;
+		}while((sr & FLASH_SR_BSY) == FLASH_SR_BSY);
+		
+		/*check program word is ok*/
+		if(*p16Src != *p16Dest)
+		{
+			/*clear PG bit*/
+			cr = FLASH_CR_REG;
+			cr &= ~(FLASH_CR_PG | FLASH_CR_SIZE_MASK);
+			FLASH_CR_REG = cr;	
+			
+			return 1;
+		}		
+	}	
 	
 	/*clear PG bit*/
 	cr = FLASH_CR_REG;
-	cr &= ~(FLASH_CR_PG | FLASH_CR_16_SIZE);
+	cr &= ~(FLASH_CR_PG | FLASH_CR_SIZE_MASK);
 	FLASH_CR_REG = cr;		
 	
   return (0);                                  // Finished without Errors
