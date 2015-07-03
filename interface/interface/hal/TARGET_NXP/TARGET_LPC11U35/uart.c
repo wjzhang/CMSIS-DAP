@@ -30,8 +30,8 @@ static struct {
     uint8_t  data[BUFFER_SIZE];
     volatile uint16_t idx_in;
     volatile uint16_t idx_out;
-    volatile  int16_t cnt_in;
-    volatile  int16_t cnt_out;
+    volatile  int32_t cnt_in;
+    volatile  int32_t cnt_out;
 } write_buffer, read_buffer;
 
 
@@ -70,8 +70,8 @@ int32_t uart_initialize (void) {
     // reset uart
     uart_reset();
 
-    // enable rx and tx interrupt
-    LPC_USART->IER |= (1 << 0) | (1 << 1);
+    // enable rx interrupt
+    LPC_USART->IER = (1 << 0);
 
     NVIC_EnableIRQ(UART_IRQn);
 
@@ -115,7 +115,7 @@ int32_t uart_reset (void) {
     for (i = 0; i < sizeof(read_buffer); i++) {
         *ptr++ = 0;
     }
-
+    
     // Ensure a clean start, no data in either TX or RX FIFO
     while (( LPC_USART->LSR & ( (1 << 5) | (1 << 6) ) ) != ( (1 << 5) | (1 << 6) ) );
     while ( LPC_USART->LSR & 0x01 ) {
@@ -315,7 +315,7 @@ int32_t uart_write_free(void) {
 
 int32_t uart_write_data (uint8_t *data, uint16_t size) {
     uint32_t cnt;
-    int16_t  len_in_buf;
+    int32_t  len_in_buf;
 
     if (size == 0) {
         return 0;
@@ -332,10 +332,10 @@ int32_t uart_write_data (uint8_t *data, uint16_t size) {
         }
     }
 
-    // enable THRE interrupt
-    LPC_USART->IER |= (1 << 1);
 
     if (!tx_in_progress) {
+        // enable THRE interrupt
+        LPC_USART->IER |= (1 << 1);
         // force THRE interrupt to start
         NVIC_SetPendingIRQ(UART_IRQn);
     }
@@ -377,7 +377,7 @@ int32_t uart_read_data (uint8_t *data, uint16_t size) {
 
 void UART_IRQHandler (void) {
     uint32_t iir;
-    int16_t  len_in_buf;
+    int32_t  len_in_buf;
 
     // read interrupt status
     iir = LPC_USART->IIR;
