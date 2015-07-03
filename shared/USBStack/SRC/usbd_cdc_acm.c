@@ -43,6 +43,7 @@ uint8_t *ptr_data_read;                 /*!< Pointer to the receive intermediate
 uint16_t control_line_state;            /*!< Control line state settings bitmap (0. bit - DTR state, 1. bit - RTS state) */
 
 CDC_LINE_CODING line_coding;            /*!< Communication settings */
+uint16_t        line_coding_init = 0;   /*!< Reset did not change CDC line code */
 
 /* end of group USBD_CDC_ACM_GLOBAL_VAR */
 
@@ -146,10 +147,13 @@ __weak int32_t USBD_CDC_ACM_Reset (void) {
 
   USBD_CDC_ACM_PortReset ();
 
-  line_coding.dwDTERate       = 9600;
-  line_coding.bCharFormat     = 0;
-  line_coding.bParityType     = 0;
-  line_coding.bDataBits       = 8;
+  if(line_coding_init ==0){
+    line_coding_init = 1; 
+    line_coding.dwDTERate       = 9600;
+    line_coding.bCharFormat     = 0;
+    line_coding.bParityType     = 0;
+    line_coding.bDataBits       = 8;
+  }
 
   return (USBD_CDC_ACM_PortSetLineCoding (&line_coding));
 }
