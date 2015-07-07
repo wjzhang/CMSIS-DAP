@@ -25,22 +25,22 @@
     \defgroup USBD_CDC_ACM_GLOBAL_VAR  Global Variables (GLOBAL_VAR)
     \brief      Global variables used in USBD CDC ACM module
  */
-volatile int32_t  data_send_access;              /*!< Flag active while send data (in the send intermediate buffer) is being accessed */
-volatile int32_t  data_send_active;              /*!< Flag active while data is being sent */
-volatile int32_t  data_send_zlp;                 /*!< Flag active when ZLP needs to be sent */
-volatile int32_t  data_to_send_wr;               /*!< Number of bytes written to the send intermediate buffer */
-volatile int32_t  data_to_send_rd;               /*!< Number of bytes read from the send intermediate buffer */
-volatile uint8_t *ptr_data_to_send;              /*!< Pointer to the send intermediate buffer to the data to be sent */
-volatile uint8_t *ptr_data_sent;                 /*!< Pointer to the send intermediate buffer to the data already sent */
+int32_t  data_send_access;              /*!< Flag active while send data (in the send intermediate buffer) is being accessed */
+int32_t  data_send_active;              /*!< Flag active while data is being sent */
+int32_t  data_send_zlp;                 /*!< Flag active when ZLP needs to be sent */
+int32_t  data_to_send_wr;               /*!< Number of bytes written to the send intermediate buffer */
+int32_t  data_to_send_rd;               /*!< Number of bytes read from the send intermediate buffer */
+uint8_t *ptr_data_to_send;              /*!< Pointer to the send intermediate buffer to the data to be sent */
+uint8_t *ptr_data_sent;                 /*!< Pointer to the send intermediate buffer to the data already sent */
 
-volatile int32_t  data_read_access;              /*!< Flag active while read data (in the receive intermediate buffer) is being accessed */
-volatile int32_t  data_receive_int_access;       /*!< Flag active while read data (in the receive intermediate buffer) is being accessed from the IRQ function*/
-volatile int32_t  data_received_pending_pckts;   /*!< Number of packets received but not handled (pending) */
-volatile int32_t  data_no_space_for_receive;     /*!< Flag active while there is no more space for reception */
-volatile uint8_t *ptr_data_received;             /*!< Pointer to the receive intermediate buffer to the received unread data */
-volatile uint8_t *ptr_data_read;                 /*!< Pointer to the receive intermediate buffer to the received read data */
+int32_t  data_read_access;              /*!< Flag active while read data (in the receive intermediate buffer) is being accessed */
+int32_t  data_receive_int_access;       /*!< Flag active while read data (in the receive intermediate buffer) is being accessed from the IRQ function*/
+int32_t  data_received_pending_pckts;   /*!< Number of packets received but not handled (pending) */
+int32_t  data_no_space_for_receive;     /*!< Flag active while there is no more space for reception */
+uint8_t *ptr_data_received;             /*!< Pointer to the receive intermediate buffer to the received unread data */
+uint8_t *ptr_data_read;                 /*!< Pointer to the receive intermediate buffer to the received read data */
 
-volatile uint16_t control_line_state;            /*!< Control line state settings bitmap (0. bit - DTR state, 1. bit - RTS state) */
+uint16_t control_line_state;            /*!< Control line state settings bitmap (0. bit - DTR state, 1. bit - RTS state) */
 
 CDC_LINE_CODING line_coding;            /*!< Communication settings */
 uint16_t        line_coding_init = 0;   /*!< Reset did not change CDC line code */
@@ -250,8 +250,6 @@ int32_t USBD_CDC_ACM_DataSend (const uint8_t *buf, int32_t len) {
   int32_t  len_data, len_available, len_before_wrap;
   uint8_t *buf_loc;
 
-	__disable_irq();
-
   buf_loc       = (uint8_t *)buf;       /* Pointer to buf                     */
   len_data      = data_to_send_wr - data_to_send_rd;  /* Num of data in buffer*/
   len_available = ((int32_t)usbd_cdc_acm_sendbuf_sz) - len_data;  /* Num of
@@ -284,8 +282,6 @@ int32_t USBD_CDC_ACM_DataSend (const uint8_t *buf, int32_t len) {
   len += len_before_wrap;               /* Total number of bytes prepared for
                                            send                               */
   data_to_send_wr += len;               /* Bytes prepared to send counter     */
-
-  __enable_irq();
 
   return (len);                         /* Number of bytes accepted for send  */
 }
@@ -322,20 +318,19 @@ int32_t USBD_CDC_ACM_PutChar (const uint8_t ch) {
 
 int32_t USBD_CDC_ACM_DataRead (uint8_t *buf, int32_t len) {
   int32_t len_data;
-	
-	__disable_irq();
+
   if (ptr_data_received>ptr_data_read) {/*If there is already received data   */
     len_data = ptr_data_received - ptr_data_read; /* Available bytes of data  */
 
     if (len > len_data)                 /* If more requested then available   */
       len = len_data;                   /* correct to return maximum available*/
 
-    memcpy (buf, (void*)ptr_data_read, len);   /* Copy received data to provided buf */
+    memcpy (buf, ptr_data_read, len);   /* Copy received data to provided buf */
     ptr_data_read      += len;          /* Correct position of read pointer   */
   } else {
     len = 0;                            /* No data received                   */
   }
-	__enable_irq();
+
   return (len);                         /* Number of bytes actually read      */
 }
 

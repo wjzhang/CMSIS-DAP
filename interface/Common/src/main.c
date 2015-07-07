@@ -200,10 +200,9 @@ void main_disable_debug_event(void) {
 #define SIZE_DATA (64)
 os_mbx_declare(serial_mailbox, 20);
 
-uint8_t serial_data[SIZE_DATA];
 __task void serial_process() {
+    uint8_t data[SIZE_DATA];
     int32_t len_data = 0;
-    int32_t sent_data = 0;
     void *msg;
 
     while (1) {
@@ -235,14 +234,13 @@ __task void serial_process() {
             }
         }
 
-/*
         len_data = USBD_CDC_ACM_DataFree();
         if (len_data > SIZE_DATA)
             len_data = SIZE_DATA;
         if (len_data)
-            len_data = uart_read_data(serial_data, len_data);
+            len_data = uart_read_data(data, len_data);
         if (len_data) {
-            if(USBD_CDC_ACM_DataSend(serial_data , len_data))
+            if(USBD_CDC_ACM_DataSend(data , len_data))
                 main_blink_cdc_led(0);
         }
 
@@ -255,39 +253,7 @@ __task void serial_process() {
             if (uart_write_data(data, len_data))
                 main_blink_cdc_led(0);
         }
-*/
-
-				sent_data = 0;
-        len_data = uart_read_data(serial_data, SIZE_DATA);
-				if (USBD_CDC_ACM_DataFree() >= len_data)
-				{
-						while ((len_data-sent_data) > 0) {
-								sent_data += USBD_CDC_ACM_DataSend(&serial_data[sent_data], len_data-sent_data);
-								main_blink_cdc_led(0);
-						}
-			  }
-
-				sent_data = 0;
-        len_data = USBD_CDC_ACM_DataRead(serial_data, SIZE_DATA);
-        while ((len_data-sent_data) > 0) {
-            sent_data += uart_write_data(&serial_data[sent_data], len_data-sent_data);
-            main_blink_cdc_led(0);
-        }
-
-				
-/*				
-				len_data = USBD_CDC_ACM_DataRead(serial_data, SIZE_DATA);
-				while(len_data)
-				{
-						if (len_data <= USBD_CDC_ACM_DataFree())
-						{
-					    USBD_CDC_ACM_DataSend(serial_data , len_data);
-						  break;
-						}
-			  }
-*/
     }
-
 }
 
 extern __task void hid_process(void);
