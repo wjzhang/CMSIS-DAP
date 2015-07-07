@@ -70,8 +70,8 @@ int32_t uart_initialize (void) {
     // reset uart
     uart_reset();
 
-    // enable rx interrupt
-    LPC_USART->IER = (0x01 << 0);
+    // enable RX/RX error interrupt
+    LPC_USART->IER = (0x01 << 0) | (0x1 << 2);
 
     NVIC_EnableIRQ(UART_IRQn);
 
@@ -394,6 +394,16 @@ void UART_IRQHandler (void) {
         LPC_USART->IER &= ~(0x01 << 1);
     }
 
+    //handle RLS interrupt
+    if((iir & 0x0E) == 0x06){ //RLS
+        //clear the FIFO.
+        while (LPC_USART->LSR & 0x01) {
+            LPC_USART->RBR;
+        }
+        LPC_USART->LSR;
+        return;
+    }
+    
     // handle received character
     if (((iir & 0x0E) == 0x04)  ||        // Rx interrupt (RDA)
         ((iir & 0x0E) == 0x0C))  {        // Rx interrupt (CTI)          
