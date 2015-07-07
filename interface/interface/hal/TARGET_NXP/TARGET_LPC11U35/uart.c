@@ -71,7 +71,7 @@ int32_t uart_initialize (void) {
     uart_reset();
 
     // enable rx interrupt
-    LPC_USART->IER = (1 << 0);
+    LPC_USART->IER = (0x01 << 0);
 
     NVIC_EnableIRQ(UART_IRQn);
 
@@ -335,7 +335,7 @@ int32_t uart_write_data (uint8_t *data, uint16_t size) {
 
     if (!tx_in_progress) {
         // enable THRE interrupt
-        LPC_USART->IER |= (1 << 1);
+        LPC_USART->IER |= (0x01 << 1);
         // force THRE interrupt to start
         NVIC_SetPendingIRQ(UART_IRQn);
     }
@@ -361,15 +361,12 @@ int32_t uart_read_data (uint8_t *data, uint16_t size) {
         }
     }
     
-    if(cnt != 0)
-    {
 #if defined(BOARD_DT01)
-        //nothing need do.
+    //nothing need do.
 #else
-        //enable RX interrupt
-        LPC_USART->IER |= (0 << 1);             
+    //enable RX interrupt
+    LPC_USART->IER |= (0x01 << 0);             
 #endif         
-    }
 
     return cnt;
 }
@@ -394,7 +391,7 @@ void UART_IRQHandler (void) {
     } else if (tx_in_progress) {
         tx_in_progress = 0;
         // disable THRE interrupt
-        LPC_USART->IER &= ~(1 << 1);
+        LPC_USART->IER &= ~(0x01 << 1);
     }
 
     // handle received character
@@ -414,7 +411,7 @@ void UART_IRQHandler (void) {
 #else
                 //buffer full. keep data in FIFO, assert RTS=HIGH.
                 //disable the RX interrupt
-                LPC_USART->IER &= ~(0 << 1);
+                LPC_USART->IER &= ~(0x01 << 0);
                 break;
 #endif                
             }
