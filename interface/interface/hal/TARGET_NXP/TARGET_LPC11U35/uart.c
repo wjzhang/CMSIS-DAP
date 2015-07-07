@@ -143,6 +143,13 @@ int32_t uart_set_configuration (UART_Configuration *config) {
     // reset uart
     uart_reset();
 
+#if defined(BOARD_DT01) 
+    //nothing
+#else   
+    //clear RTS
+    LPC_USART->MCR = (0x01 << 1);
+#endif    
+
     dll =  SystemCoreClock / (16 * config->Baudrate);
     baudrate = config->Baudrate;
 
