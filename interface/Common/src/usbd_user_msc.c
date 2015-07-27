@@ -30,53 +30,11 @@
 #include "swd_host.h"
 #include "usb_buf.h"
 #include "ihex.h"
+#include "target_ids.h"
 
-#if defined(DBG_LPC1768)
-#   define WANTED_SIZE_IN_KB                        (512)
-#elif defined(DBG_KL02Z)
-#   define WANTED_SIZE_IN_KB                        (32)
-#elif defined(DBG_KL05Z)
-#   define WANTED_SIZE_IN_KB                        (32)
-#elif defined(DBG_K24F256)
-#   define WANTED_SIZE_IN_KB                        (256)
-#elif defined(DBG_KL25Z)
-#   define WANTED_SIZE_IN_KB                        (128)
-#elif defined(DBG_KL26Z)
-#   define WANTED_SIZE_IN_KB                        (128)
-#elif defined(DBG_KL46Z)
-#   define WANTED_SIZE_IN_KB                        (256)
-#elif defined(DBG_K20D50M)
-#   define WANTED_SIZE_IN_KB                        (128)
-#elif defined(DBG_K22F)
-#   define WANTED_SIZE_IN_KB                        (512)
-#elif defined(DBG_K64F)
-#   define WANTED_SIZE_IN_KB                        (1024)
-#elif defined(DBG_LPC812)
-#   define WANTED_SIZE_IN_KB                        (16)
-#elif defined(DBG_LPC1114)
-#   define WANTED_SIZE_IN_KB                        (32)
-#elif defined(DBG_LPC4330)
-#   if defined(BOARD_BAMBINO_210E)
-#       define WANTED_SIZE_IN_KB                    (8192)
-#   else
-#       define WANTED_SIZE_IN_KB                    (4096)
-#   endif
-#elif defined(DBG_LPC1549)
-#   define WANTED_SIZE_IN_KB                        (512)
-#elif defined(DBG_LPC11U68)
-#   define WANTED_SIZE_IN_KB                        (256)
 
-#elif defined(DBG_LPC4337)
-#   define WANTED_SIZE_IN_KB                        (1024)
-#elif defined(DBG_NRF51822)
-#   define WANTED_SIZE_IN_KB                        (1024)
-#elif defined(DBG_STM32F103RC)
-#   define WANTED_SIZE_IN_KB                        (2048)
-#elif defined(DBG_STM32F051)
-#   define WANTED_SIZE_IN_KB                        (512)
-#elif defined(DBG_STM32F405)
-#   define WANTED_SIZE_IN_KB                        (8192)
-#endif
+#define WANTED_SIZE_IN_KB                        (8192)
+
 
 //------------------------------------------------------------------- CONSTANTS
 #define WANTED_SIZE_IN_BYTES        ((WANTED_SIZE_IN_KB + 16 + 8)*1024)
@@ -439,11 +397,7 @@ static uint8_t reason = 0;
 static uint32_t flash_addr_offset = 0;
 
 //default to HEX_FILE type for NRF    
-#if defined(DBG_NRF51822)
 static FILE_TYPE fileTypeReceived = HEX_FILE;
-#else
-static FILE_TYPE fileTypeReceived = BIN_FILE;
-#endif
 
 #define SWD_ERROR               0
 #define BAD_EXTENSION_FILE      1
@@ -453,6 +407,8 @@ static FILE_TYPE fileTypeReceived = BIN_FILE;
 #define BAD_START_SECTOR        5
 #define TIMEOUT                 6
 #define CORRUPT_FILE            7
+#define SECTOR_TOO_LARGE_MOVE   8
+
 
 static uint8_t * reason_array[] = {
     "SWD ERROR",
@@ -462,7 +418,8 @@ static uint8_t * reason_array[] = {
     "RESERVED BITS",
     "BAD START SECTOR",
     "TIMEOUT",
-    "CORRUPT FILE"
+    "CORRUPT FILE",
+    "FLASH SECTOR TOO LARGE TO MOVE"
 };
 
 #define MSC_TIMEOUT_SPLIT_FILES_EVENT   (0x1000)
@@ -561,17 +518,12 @@ void init(uint8_t jtag) {
     msc_event_timeout = 0;
     USBD_MSC_BlockBuf   = (uint8_t *)usb_buffer;
     listen_msc_isr = 1;
-#if defined(DBG_STM32F103RC) || defined(DBG_STM32F051) || defined(DBG_STM32F405)
-		flash_addr_offset = TARGET_FALSH_BASE_ADDR;
-#else
-    flash_addr_offset = 0;
-#endif
     
+	flash_addr_offset = target_flash_baseaddress();
+
     //default to HEX_FILE type for NRF
-#if defined(DBG_NRF51822) || defined(DBG_STM32F103RC) || defined(DBG_STM32F051) || defined(DBG_STM32F405)
     fileTypeReceived = HEX_FILE;
     ihex_init();
-#endif
 }
 
 void failSWD() {
@@ -579,27 +531,17 @@ void failSWD() {
     initDisconnect(0);
 }
 
+void failFlash() {
+    reason = SECTOR_TOO_LARGE_MOVE;
+    initDisconnect(0);
+}
+
 extern DAP_Data_t DAP_Data;  // DAP_Data.debug_port
 
-#ifdef BOARD_UBLOX_C027
-#include "read_uid.h"
-#endif
 
 static void initDisconnect(uint8_t success) {
-#if defined(BOARD_UBLOX_C027)
-    int autorst = (good_file == 2) && success;
-    int autocrp = (good_file == 3) && success;
-    if (autocrp)
-    {
-        // first we need to discoonect the usb stack
-        usbd_connect(0);
-
-        enter_isp();
-    }
-#else
 		//when finished flash firmware, it should reset run;
     int autorst = 1;
-#endif
 
     drag_success = success;
     if (autorst && success){
@@ -614,7 +556,11 @@ static void initDisconnect(uint8_t success) {
 
 extern uint32_t SystemCoreClock;
 
+uint8_t swd_init_get_target(void);
+uint8_t connect_on_reset(void);
+
 int jtag_init(void) {
+    volatile uint32_t i = 0 ;    
     if (DAP_Data.debug_port != DAP_PORT_DISABLED) {
         need_restart_usb = 1;
     }
@@ -626,8 +572,16 @@ int jtag_init(void) {
         }
 
         semihost_disable();
-        PORT_SWD_SETUP();
-        target_set_state(RESET_PROGRAM);
+        //for DT01. each drag&drop need get targetID
+        //init get target ID
+        targetID = swd_init_get_target();
+
+        if(targetID == Target_UNKNOWN) {
+            targetID = connect_on_reset();
+            target_set_state(HOLD_PROGRAM);        
+        }else{      
+            target_set_state(RESET_PROGRAM);
+        }
         if (!target_flash_init(SystemCoreClock)) {
             failSWD();
             return 1;
@@ -647,6 +601,7 @@ static const FILE_TYPE_MAPPING file_type_infos[] = {
     { HEX_FILE, {'h', 'e', 'x'}, 0x00000000 },
     { UNSUP_FILE, {0,0,0},     0            },//end of table marker
 };
+
 
 static FILE_TYPE get_file_type(const FatDirectoryEntry_t* pDirEnt, uint32_t* pAddrOffset) {
     int i;
@@ -691,6 +646,8 @@ int search_bin_file(uint8_t * root, uint8_t sector) {
     FILE_TYPE file_type;
     uint8_t hidden_file = 0, adapt_th_sector = 0;
     uint32_t offset = 0;
+    uint32_t flashsectorsize = 0;
+    uint32_t flashbaseaddress = 0;
 
     FatDirectoryEntry_t* pDirEnts = (FatDirectoryEntry_t*)root;
 
@@ -774,31 +731,30 @@ int search_bin_file(uint8_t * root, uint8_t sector) {
 
                 move_sector_start = (begin_sector - start_sector)*MBR_BYTES_PER_SECTOR;
                 nb_sector_to_move = (nb_sector % 2) ? nb_sector/2 + 1 : nb_sector/2;
-                for (i = 0; i < nb_sector_to_move; i++) {
-#if defined(TARGET_LPC11U35) && (defined(DBG_STM32F103RC) || defined(DBG_STM32F051) || defined(DBG_STM32F405) )
-                    if (!swd_read_memory(TARGET_FALSH_BASE_ADDR + move_sector_start + i*FLASH_USB_SECTOR_SIZE, (uint8_t *)usb_buffer, FLASH_USB_SECTOR_SIZE)) {
-                        failSWD();
-                        return -1;
+                flashsectorsize = target_flash_sectorsize();
+                flashbaseaddress = target_flash_baseaddress();
+                if(flashsectorsize <= 2048) //usb_buffer max is 2KB, normal 1KB
+                {
+                    for (i = 0; i < nb_sector_to_move; i++) {							
+                        if (!swd_read_memory(flashbaseaddress + move_sector_start + i*flashsectorsize, (uint8_t *)usb_buffer, flashsectorsize)) {
+                            failSWD();
+                            return -1;
+                        }
+                        if (!target_flash_erase_sector(i)) {
+                            failSWD();
+                            return -1;
+                        }
+                        if (!target_flash_program_page(flashbaseaddress + i*flashsectorsize, (uint8_t *)usb_buffer, flashsectorsize)) {
+                            failSWD();
+                            return -1;
+                        }
                     }
-
-                    if (!target_flash_program_page(TARGET_FALSH_BASE_ADDR + i*FLASH_USB_SECTOR_SIZE, (uint8_t *)usb_buffer, FLASH_USB_SECTOR_SIZE)) {
-                        failSWD();
-                        return -1;
-                    }										
-#else									
-                    if (!swd_read_memory(move_sector_start + i*FLASH_SECTOR_SIZE, (uint8_t *)usb_buffer, FLASH_SECTOR_SIZE)) {
-                        failSWD();
-                        return -1;
-                    }
-                    if (!target_flash_erase_sector(i)) {
-                        failSWD();
-                        return -1;
-                    }
-                    if (!target_flash_program_page(i*FLASH_SECTOR_SIZE, (uint8_t *)usb_buffer, FLASH_SECTOR_SIZE)) {
-                        failSWD();
-                        return -1;
-                    }
-#endif
+                }
+                else
+                {
+                    //flash sector too large to move
+                    failFlash();
+                    return -1;                    
                 }
                 initDisconnect(1);
                 return -1;
@@ -807,13 +763,13 @@ int search_bin_file(uint8_t * root, uint8_t sector) {
             found = 1;
             idx = i; // this is the file we want
             good_file = 1;
-#if defined(BOARD_UBLOX_C027)
-            if (0 == memcmp((const char*)pDirEnts[i].filename, "~AUTORST", 8))
-                good_file = 2;
-            else if (0 == memcmp((const char*)pDirEnts[i].filename, "~AUTOCRP", 8))
-                good_file = 3;
-#endif
-            flash_addr_offset = offset;
+            // init jtag if needed
+            if (jtag_init() == 1) {
+                return -1;
+            }
+            //get target flash start
+            //flash_addr_offset = offset;
+            flash_addr_offset = target_flash_baseaddress();
             break;
         }
         // if we receive a new file which does not have the good extension
@@ -884,7 +840,6 @@ void usbd_msc_read_sect (uint32_t block, uint8_t *buf, uint32_t num_of_blocks) {
 static int programPage() {    
     isr_evt_set(MSC_TIMEOUT_RESTART_EVENT, msc_valid_file_timeout_task_id);
     
-#if defined(DBG_NRF51822) || defined(DBG_STM32F103RC) || defined(DBG_STM32F051) || defined(DBG_STM32F405)
     //We need to process the data if it's from a HEX file....
     if(fileTypeReceived == HEX_FILE)
     {
@@ -907,7 +862,6 @@ static int programPage() {
        return 1;
     }
     else
-#endif
     {
         // if we have received two sectors, write into flash
         if (!target_flash_program_page(flashPtr + flash_addr_offset, (uint8_t *)usb_buffer, FLASH_PROGRAM_PAGE_SIZE)) {
@@ -995,23 +949,21 @@ void usbd_msc_write_sect (uint32_t block, uint8_t *buf, uint32_t num_of_blocks) 
         }
 
         // init jtag if needed
-        if (jtag_init() == 1) {
-            return;
-        }
+        //if (jtag_init() == 1) {
+        //    return;
+        //}
 
         if (jtag_flash_init == 1) {
             main_blink_msd_led(1);
             // We erase the chip if we received unrelated data before (mac compatibility)
             if (maybe_erase && (block == theoretical_start_sector)) {
                 // avoid erasing the internal flash if only the external flash will be updated
-                if (flash_addr_offset == 0) {
-#ifndef DBG_NRF51822
+                if ((targetID != Target_NRF51822) && (flash_addr_offset == 0)) {
                      if (!target_flash_erase_chip()) {
                          reason = SWD_ERROR;
                          initDisconnect(0);
                          return;
                      }
-#endif
                 }
                 maybe_erase = 0;
                 program_page_error = 0;
@@ -1051,14 +1003,12 @@ void usbd_msc_write_sect (uint32_t block, uint8_t *buf, uint32_t num_of_blocks) 
 
             if (flash_started && (block == theoretical_start_sector)) {
                 // avoid erasing the internal flash if only the external flash will be updated
-                if (flash_addr_offset == 0) {
-#ifndef DBG_NRF51822
+                if ((targetID != Target_NRF51822) && (flash_addr_offset == 0)) {
                      if (target_flash_erase_chip() == 0) {
                          reason = SWD_ERROR;
                          initDisconnect(0);
                          return;
                      }
-#endif
                 }
                 maybe_erase = 0;
                 program_page_error = 0;

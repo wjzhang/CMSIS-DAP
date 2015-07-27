@@ -1,17 +1,11 @@
 
-#if defined(DBG_NRF51822) || defined(DBG_STM32F103RC) || defined(DBG_STM32F051) || defined(DBG_STM32F405)
-
 #include <string.h>
 #include <absacc.h>
 #include "ihex.h"
 #include "target_flash.h"
 
 
-#if defined(DBG_STM32F103RC) || defined(DBG_STM32F051) || defined(DBG_STM32F405)
-#define PAGE_SIZE   512
-#else
-#define PAGE_SIZE   FLASH_SECTOR_SIZE
-#endif
+
 
 #define LINE_SIZE   64
 
@@ -60,7 +54,8 @@ int  line_len = 0;
 
 ihex_record_t r;
 
-uint8_t  bin_buffer[PAGE_SIZE] __at(0x20000000 + PAGE_SIZE);	//usb_buffer at [0x20000000, 0x2000200]
+#define PAGE_SIZE   512
+uint8_t  bin_buffer[PAGE_SIZE] __at(0x20000000 + PAGE_SIZE);	//usb_buffer at [0x20000000, 0x2000200], bin_buffer at [0x20000200, 0x2000400]
 
 
 uint16_t bin_data_index   = 0;
@@ -83,9 +78,7 @@ void ihex_init()
     page_data_index = 0;
     bin_data_index = 0;
     bin_low_address  = 0;
-    bin_high_address = 0;
-    
-    flash_is_erase_all = 0;
+    bin_high_address = 0;    
 }
 
 /**
@@ -346,5 +339,4 @@ static ihex_error_t ihex_get_nbytes(char *src, uint8_t *dst, uint8_t nbytes, uin
 	return err;
 }
 
-#endif
 

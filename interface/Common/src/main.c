@@ -30,16 +30,10 @@
 
 #include "target_reset.h"
 #include "swd_host.h"
-#include "version.h"
-#ifdef BOARD_UBLOX_C027
-#include <LPC11Uxx.h>
-#include "DAP_config.h"
-#include "read_uid.h"
-#endif
+#include "target_ids.h"
 
-#if defined(BOARD_LPC1549) || defined(BOARD_LPC11U68) || defined(BOARD_LPC4337)
-    #define USE_USB_EJECT_INSERT
-#endif
+#include "version.h"
+
 
 // Event flags for main task
 // Timers events
@@ -79,6 +73,10 @@ typedef enum {
     LED_FLASH_PERMANENT
 } LED_STATE;
 
+//the target ID
+uint8_t targetID = Target_UNKNOWN;
+uint8_t swd_init_get_target(void);
+    
 // Reference to our main task
 OS_TID main_task_id;
 OS_TID serial_task_id;
@@ -94,21 +92,6 @@ static LED_STATE msd_led_state = LED_FLASH;
 
 static uint8_t send_uID = 0;
 
-#ifdef USE_USB_EJECT_INSERT
-    typedef enum {
-        EJECT_INSERT_INACTIVE,
-        EJECT_INSERT_WAIT_TO_EJECT,
-        EJECT_INSERT_WAIT_TO_INSERT,
-    } EJECT_INSERT_MODE;
-
-    // Delay of ~0.5 second using 90ms ticks
-    #define EJECT_INSERT_DELAY_500MS  (5)
-
-    // Variables to handle media eject/insert after a successful drag-n-drop
-    extern BOOL USBD_MSC_MediaReadyEx;
-    static EJECT_INSERT_MODE EjectInsertMediaMode = EJECT_INSERT_INACTIVE;
-    static BOOL EjectInsertMediaCounter = 0;
-#endif
 
 // Global state of usb
 USB_CONNECT usb_state;
@@ -174,14 +157,7 @@ void main_usb_busy_event(void) {
 
 // A new binary has been flashed in the target
 void main_usb_disconnect_event(void) {
-#ifdef USE_USB_EJECT_INSERT
-    // Instead of restarting the entire USB stack, just report the
-    // media as missing and then as present again. This should force
-    // the host to reload the file system.
-    os_evt_set(FLAGS_MAIN_USB_MEDIA_EJECT, main_task_id);
-#else
     os_evt_set(FLAGS_MAIN_USB_DISCONNECT, main_task_id);
-#endif
     return;
 }
 
@@ -291,22 +267,9 @@ __task void main_task(void) {
     gpio_set_cdc_led(1);
     gpio_set_msd_led(1);
 
-#ifdef BOARD_UBLOX_C027
-    PORT_SWD_SETUP();
-    // wait until reset output to the target is pulled high
-    while (!PIN_nRESET_IN()) {
-        /* wait doing nothing */
-    }
-    os_dly_wait(4);
-    // if the reset input from button is low then enter isp programming mode
-    if (!(LPC_GPIO->B[19/*RESET_PIN*/ + (1/*RESET_PORT*/ << 5)] & 1)) {
-        enter_isp();
-    }
-#endif 
-
     usbd_init();
     swd_init();
-
+    
     // Setup reset button
     gpio_enable_button_flag(main_task_id, FLAGS_MAIN_RESET);
     button_activated = 1;
@@ -324,10 +287,9 @@ __task void main_task(void) {
     // Start timer tasks
     os_tsk_create_user(timer_task_30mS, TIMER_TASK_30_PRIORITY, (void *)stk_timer_30_task, TIMER_TASK_30_STACK);
 
-#ifndef BOARD_UBLOX_C027
     // Target running
     //target_set_state(RESET_RUN_WITH_DEBUG);
-#endif
+
 
     // start semihost task
     semihost_init();
@@ -339,12 +301,7 @@ __task void main_task(void) {
                         | FLAGS_MAIN_30MS               // 30mS tick
                         | FLAGS_MAIN_POWERDOWN          // Power down interface
                         | FLAGS_MAIN_DISABLEDEBUG       // Power down interface
-#ifdef USE_USB_EJECT_INSERT
-                        | FLAGS_MAIN_USB_DISCONNECT     // Disable target debug
-                        | FLAGS_MAIN_USB_MEDIA_EJECT,   // Eject file system
-#else
                         | FLAGS_MAIN_USB_DISCONNECT,    // Disable target debug
-#endif
                         NO_TIMEOUT);
 
         // Find out what event happened
@@ -356,17 +313,12 @@ __task void main_task(void) {
             usb_state = USB_DISCONNECT_CONNECT;        // disconnect the usb
         }
 
-#ifdef USE_USB_EJECT_INSERT
-        if (flags & FLAGS_MAIN_USB_MEDIA_EJECT) {
-            EjectInsertMediaMode = EJECT_INSERT_WAIT_TO_EJECT;
-            EjectInsertMediaCounter = EJECT_INSERT_DELAY_500MS;
-        }
-#endif
-
         if (flags & FLAGS_MAIN_RESET) {
             cdc_led_state = LED_OFF;
             gpio_set_cdc_led(0);
             //usbd_cdc_ser_flush();
+            //need check every time
+            targetID = swd_init_get_target();
             if (send_uID) {
                 // set the target in reset to not receive char on the serial port
                 target_set_state(RESET_HOLD);
@@ -387,6 +339,8 @@ __task void main_task(void) {
             // Stop semihost task
             semihost_disable();
 
+            //need check every time
+            targetID = swd_init_get_target(); 
             // Disable debug
             target_set_state(NO_DEBUG);
 
@@ -406,6 +360,8 @@ __task void main_task(void) {
             // Stop semihost task
             semihost_disable();
 
+            //need check every time
+            targetID = swd_init_get_target();             
             // Disable debug
             target_set_state(NO_DEBUG);
         }
@@ -415,26 +371,6 @@ __task void main_task(void) {
                 gpio_enable_button_flag(main_task_id, FLAGS_MAIN_RESET);
                 button_activated = 1;
             }
-
-#ifdef USE_USB_EJECT_INSERT
-            if (EjectInsertMediaMode == EJECT_INSERT_WAIT_TO_EJECT) {
-                if (--EjectInsertMediaCounter == 0) {
-                    // Have waited ~0.5 second, time to eject media
-                    EjectInsertMediaMode = EJECT_INSERT_WAIT_TO_INSERT;
-                    EjectInsertMediaCounter = EJECT_INSERT_DELAY_500MS;
-                    USBD_MSC_MediaReady = __FALSE;
-                }
-            }
-            if ((EjectInsertMediaMode == EJECT_INSERT_WAIT_TO_INSERT) && !USBD_MSC_MediaReadyEx) {
-                // The host computer have questioned the state and received
-                // the message that the media has been removed
-                if (--EjectInsertMediaCounter == 0) {
-                    // Have waited ~0.5 seconds after ejecting, time to insert media
-                    EjectInsertMediaMode = EJECT_INSERT_INACTIVE;
-                    USBD_MSC_MediaReady = __TRUE;
-                }
-            }
-#endif
 
             // Update USB busy status
             switch (usb_busy) {

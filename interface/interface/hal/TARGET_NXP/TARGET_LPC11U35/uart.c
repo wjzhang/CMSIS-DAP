@@ -59,13 +59,8 @@ int32_t uart_initialize (void) {
     // Transmit Enable
     LPC_USART->TER     = 0x80;
     
-#if defined(BOARD_DT01)
-    // disable RTS and CTS flow control
-    LPC_USART->MCR = 0x00;
-#else
     // Set RTS/CTS
-    LPC_USART->MCR = (0x01 << 7) | (0x01 << 6); // Enable RTS and CTS flow control
-#endif    
+    LPC_USART->MCR = (0x01 << 7) | (0x01 << 6); // Enable RTS and CTS flow control 
 
     // reset uart
     uart_reset();
@@ -143,12 +138,8 @@ int32_t uart_set_configuration (UART_Configuration *config) {
     // reset uart
     uart_reset();
 
-#if defined(BOARD_DT01) 
-    //nothing
-#else   
     //clear RTS
-    LPC_USART->MCR = (0x01 << 1);
-#endif    
+    LPC_USART->MCR = (0x01 << 1);  
 
     dll =  SystemCoreClock / (16 * config->Baudrate);
     baudrate = config->Baudrate;
@@ -223,13 +214,8 @@ int32_t uart_set_configuration (UART_Configuration *config) {
                    | (parity << 3);
 
 
-#if defined(BOARD_DT01)
-    // disable RTS and CTS flow control
-    LPC_USART->MCR = 0x00;
-#else
     // Set RTS/CTS
     LPC_USART->MCR = (0x01 << 7) | (0x01 << 6); // Enable RTS and CTS flow control
-#endif
 		
     // Enable UART interrupt
     NVIC_EnableIRQ (UART_IRQn);
@@ -368,12 +354,8 @@ int32_t uart_read_data (uint8_t *data, uint16_t size) {
         }
     }
     
-#if defined(BOARD_DT01)
-    //nothing need do.
-#else
     //enable RX interrupt
-    LPC_USART->IER |= (0x01 << 0);             
-#endif         
+    LPC_USART->IER |= (0x01 << 0);                    
 
     return cnt;
 }
@@ -416,21 +398,11 @@ void UART_IRQHandler (void) {
         ((iir & 0x0E) == 0x0C))  {        // Rx interrupt (CTI)          
         while (LPC_USART->LSR & 0x01) {
             len_in_buf = read_buffer.cnt_in - read_buffer.cnt_out;
-            if (len_in_buf == BUFFER_SIZE) {
-#if defined(BOARD_DT01)
-                read_buffer.data[read_buffer.idx_in++] = LPC_USART->RBR;
-                read_buffer.idx_in &= (BUFFER_SIZE - 1);
-                read_buffer.cnt_in++;
-                // if buffer full: write by dropping oldest characters
-                read_buffer.idx_out++;
-                read_buffer.idx_out &= (BUFFER_SIZE - 1);
-                read_buffer.cnt_out++;
-#else
+            if (len_in_buf == BUFFER_SIZE) {            
                 //buffer full. keep data in FIFO, assert RTS=HIGH.
                 //disable the RX interrupt
                 LPC_USART->IER &= ~(0x01 << 0);
-                break;
-#endif                
+                break;            
             }
             else{
                 read_buffer.data[read_buffer.idx_in++] = LPC_USART->RBR;

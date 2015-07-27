@@ -34,17 +34,6 @@ Provides definitions about:
 
 // Board configuration options
 
-// Configure nReset as open drain
-#if defined(BOARD_UBLOX_C027)
-#define CONF_OPENDRAIN
-#endif
-
-// Configure JTAG option
-#if defined(BOARD_BAMBINO_210) || defined(BOARD_BAMBINO_210E)
-// LPC43xx multicore targets require JTAG to debug slave cores
-#define CONF_JTAG
-#endif
-
 /// Processor Clock of the Cortex-M MCU used in the Debug Unit.
 /// This value is used to calculate the SWD/JTAG clock speed.
 #define CPU_CLOCK               48000000        ///< Specifies the CPU Clock in Hz
@@ -114,7 +103,10 @@ Provides definitions about:
 #define PULL_UP_ENABLED			(2 << 3)
 #define OPENDRAIN				(1 << 10)
 
-#if defined(BOARD_DT01) || defined(BOARD_BB200X)
+#if defined(BOARD_MB2100)
+
+#define CONF_OPENDRAIN
+
 // Debug Port I/O Pins
 // For LPC11Uxx DAPs all SWD and JTAG pins are on GPIO port 0
 // Default is mbed HDK reference design with LPC11U35/501
@@ -128,10 +120,11 @@ Provides definitions about:
 #define PIN_SWDIO               (1 << PIN_SWDIO_IN_BIT)
 #define PIN_SWDIO_TMS_IOCON     LPC_IOCON->PIO0_8
 
-// nRESET Pin                   PIO0_5
-#define PIN_nRESET_IN_BIT       5
+// nRESET Pin                   PIO0_23
+#define PIN_nRESET_IN_BIT       23
 #define PIN_nRESET              (1 << PIN_nRESET_IN_BIT)
-#define PIN_nRESET_IOCON        LPC_IOCON->PIO0_5
+#define PIN_nRESET_IOCON        LPC_IOCON->PIO0_23
+
 
 #if (DAP_JTAG != 0)
 
@@ -178,7 +171,7 @@ Provides definitions about:
 #define PIN_TDO_IOCON           LPC_IOCON->PIO0_9
 #endif // (DAP_JTAG != 0)
 
-#endif	// (defined(BOARD_DT01) || defined(BOARD_BB200X))
+#endif	// (defined(BOARD_MB2100) )
 
 //**************************************************************************************************
 /**

@@ -13,20 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef USB_BUF_H
-#define USB_BUF_H
+#include "target_reset.h"
+#include "swd_host.h"
 
-#include <absacc.h>
-#include <stdint.h>
+void stm32f405_target_before_init_debug(void) {
+    return;
+}
 
-#if defined(TARGET_LPC11U35)
-/* For Mass storage, each sector is 512 Byte.
- * and LPC11U35 only 2K. also need buffer for iHex function 
-*/
-#define USB_BUFFER_SIZE			512				//512 bytes per Sector for FAT.
+uint8_t stm32f405_target_unlock_sequence(void) {
+    return 1;
+}
 
-uint32_t usb_buffer[USB_BUFFER_SIZE/4] __at(0x20000000);
-
-#endif
-
-#endif  //USB_BUF_H
+uint8_t stm32f405_target_set_state(TARGET_RESET_STATE state) {
+    return swd_set_target_state(state);
+}

@@ -13,17 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "target_reset.h"
-#include "swd_host.h"
+#ifndef TARGET_IDS_H
+#define TARGET_IDS_H
 
-void target_before_init_debug(void) {
-    return;
-}
+enum Target_IDs
+{
+    Target_NRF51822  = 0,
+    Target_STM32F051 = 1,
+    Target_STM32F103 = 2,
+    Target_STM32F405 = 3,
+    Target_STM32F072 = 4,    
+    
+    Target_UNKNOWN   = 0xFF
+};
 
-uint8_t target_unlock_sequence(void) {
-    return 1;
-}
+extern  uint8_t targetID;
 
-uint8_t target_set_state(TARGET_RESET_STATE state) {
-    return swd_set_target_state(state);
-}
+#endif  //TARGET_IDS_H
