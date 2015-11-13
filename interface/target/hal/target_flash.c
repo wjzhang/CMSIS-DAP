@@ -34,11 +34,16 @@ uint16_t stm32f405_GetSecNum (unsigned long adr);
 unsigned long stm32f405_GetSecAddress (uint16_t sector);
 extern const TARGET_FLASH stm32f405_flash;
 
+uint16_t stm32f071_GetSecNum (unsigned long adr);
+unsigned long stm32f071_GetSecAddress(uint16_t sector);
+extern const TARGET_FLASH stm32f071_flash;
+
 static const Target_Flash targets_flash[] ={
     {nrf51_GetSecNum    , nrf51_GetSecAddress    , &NRF51_flash    },
     {stm32f051_GetSecNum, stm32f051_GetSecAddress, &stm32f051_flash},
     {stm32f103_GetSecNum, stm32f103_GetSecAddress, &stm32f103_flash},
-    {stm32f405_GetSecNum, stm32f405_GetSecAddress, &stm32f405_flash}
+    {stm32f405_GetSecNum, stm32f405_GetSecAddress, &stm32f405_flash},
+    {stm32f071_GetSecNum, stm32f071_GetSecAddress, &stm32f071_flash}   
 };
 
 
@@ -117,7 +122,7 @@ uint8_t target_flash_erase_chip(void) {
 }
 
 uint8_t target_flash_program_page(uint32_t addr, uint8_t * buf, uint32_t size){
-    static uint16_t lastSecNum = 0xFFF0;
+    static uint16_t lastSecNum = 0xFFFF;
     uint32_t bytes_written = 0;
 
     if(targetID == Target_UNKNOWN){

@@ -782,6 +782,11 @@
               <FilePath>..\..\target\hal\DBG_STM\DBG_STM32F405\stm32f405_target_reset.c</FilePath>
             </File>
             <File>
+              <FileName>stm32f071_target_reset.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\target\hal\DBG_STM\DBG_STM32F071\stm32f071_target_reset.c</FilePath>
+            </File>
+            <File>
               <FileName>nrf51_target_flash.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\target\hal\DBG_NordicSemi\DBG_nRF51822\nrf51_target_flash.c</FilePath>
@@ -800,6 +805,11 @@
               <FileName>stm32f405_target_flash.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\target\hal\DBG_STM\DBG_STM32F405\stm32f405_target_flash.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f071_target_flash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\target\hal\DBG_STM\DBG_STM32F071\stm32f071_target_flash.c</FilePath>
             </File>
           </Files>
         </Group>

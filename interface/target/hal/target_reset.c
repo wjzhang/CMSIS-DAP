@@ -37,6 +37,10 @@ uint8_t stm32f103_target_set_state(TARGET_RESET_STATE state);
 void stm32f405_target_before_init_debug(void);
 uint8_t stm32f405_target_unlock_sequence(void) ;
 uint8_t stm32f405_target_set_state(TARGET_RESET_STATE state);
+void stm32f071_target_before_init_debug(void);
+uint8_t stm32f071_target_unlock_sequence(void) ;
+uint8_t stm32f071_target_set_state(TARGET_RESET_STATE state);
+
 
 uint8_t default_target_set_state(TARGET_RESET_STATE state) {
     return swd_set_target_state(state);
@@ -46,7 +50,8 @@ static const Target_Reset targets[] = {
     {nrf51_target_before_init_debug    , nrf51_target_unlock_sequence    , nrf51_target_set_state    },
     {stm32f051_target_before_init_debug, stm32f051_target_unlock_sequence, stm32f051_target_set_state},
     {stm32f103_target_before_init_debug, stm32f103_target_unlock_sequence, stm32f103_target_set_state},
-    {stm32f405_target_before_init_debug, stm32f405_target_unlock_sequence, stm32f405_target_set_state}    
+    {stm32f405_target_before_init_debug, stm32f405_target_unlock_sequence, stm32f405_target_set_state},   
+    {stm32f071_target_before_init_debug, stm32f071_target_unlock_sequence, stm32f071_target_set_state}
 };
 
 

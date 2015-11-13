@@ -837,7 +837,7 @@ static uint8_t get_target_id(uint32_t coreid)
             if(tmp == 0x20006440){
                 rc = Target_STM32F051;
             }else if(tmp == 0x20006448){
-                rc = Target_STM32F072;
+                rc = Target_STM32F071;
             }else if(tmp == 0x00000000){
                 rc = Target_NRF51822;
             }else{
