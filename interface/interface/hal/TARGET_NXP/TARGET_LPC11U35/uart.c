@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 #include <LPC11Uxx.h>
+#include <RTL.h>
 #include "uart.h"
+#include "gpio.h"
 
 static uint32_t baudrate;
 static uint32_t dll;
@@ -50,8 +52,12 @@ int32_t uart_initialize (void) {
     // alternate function USART and PullNone
     LPC_IOCON->PIO0_18 |= 0x01; // RXD
     LPC_IOCON->PIO0_19 |= 0x01; // TXD
-    LPC_IOCON->PIO0_7  = 0x11; // CTS
-    LPC_IOCON->PIO0_17 = 0x11; // RTS
+	// alternate function USART RTS/CTS and PullUp
+	if(gpio_get_config(PIN_CONFIG_UART) == PIN_HIGH)
+	{	
+        LPC_IOCON->PIO0_7  = 0x11; // CTS
+        LPC_IOCON->PIO0_17 = 0x11; // RTS
+	}
 
     // enable FIFOs (trigger level 1) and clear them
     LPC_USART->FCR = 0x87;
@@ -59,9 +65,11 @@ int32_t uart_initialize (void) {
     // Transmit Enable
     LPC_USART->TER     = 0x80;
     
-    // Set RTS/CTS
-    LPC_USART->MCR = (0x01 << 7) | (0x01 << 6); // Enable RTS and CTS flow control 
-
+	if(gpio_get_config(PIN_CONFIG_UART) == PIN_HIGH)
+	{
+        // Set RTS/CTS
+        LPC_USART->MCR = (0x01 << 7) | (0x01 << 6); // Enable RTS and CTS flow control 
+	}
     // reset uart
     uart_reset();
 
@@ -138,8 +146,11 @@ int32_t uart_set_configuration (UART_Configuration *config) {
     // reset uart
     uart_reset();
 
-    //clear RTS
-    LPC_USART->MCR = (0x01 << 1);  
+	if(gpio_get_config(PIN_CONFIG_UART) == PIN_HIGH)
+	{
+        //clear RTS
+        LPC_USART->MCR = (0x01 << 1);  
+	}
 
     dll =  SystemCoreClock / (16 * config->Baudrate);
     baudrate = config->Baudrate;
@@ -214,8 +225,11 @@ int32_t uart_set_configuration (UART_Configuration *config) {
                    | (parity << 3);
 
 
-    // Set RTS/CTS
-    LPC_USART->MCR = (0x01 << 7) | (0x01 << 6); // Enable RTS and CTS flow control
+	if(gpio_get_config(PIN_CONFIG_UART) == PIN_HIGH)
+	{
+        // Set RTS/CTS
+        LPC_USART->MCR = (0x01 << 7) | (0x01 << 6); // Enable RTS and CTS flow control
+	}
 		
     // Enable UART interrupt
     NVIC_EnableIRQ (UART_IRQn);

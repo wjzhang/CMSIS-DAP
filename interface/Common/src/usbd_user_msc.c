@@ -547,7 +547,7 @@ static void initDisconnect(uint8_t success) {
     if (autorst && success){
         swd_set_target_state(RESET_RUN);
     }
-    main_blink_msd_led(0);
+
     init(1);
     isr_evt_set(MSC_TIMEOUT_STOP_EVENT, msc_valid_file_timeout_task_id);
     main_usb_disconnect_event();
@@ -795,7 +795,6 @@ void usbd_msc_read_sect (uint32_t block, uint8_t *buf, uint32_t num_of_blocks) {
 
     if (USBD_MSC_MediaReady) {
         // blink led not permanently
-        main_blink_msd_led(0);
         memset(buf, 0, 512);
 
         // Handle MBR, FAT1 sectors, FAT2 sectors, root1, root2 and mac file
@@ -954,7 +953,6 @@ void usbd_msc_write_sect (uint32_t block, uint8_t *buf, uint32_t num_of_blocks) 
         //}
 
         if (jtag_flash_init == 1) {
-            main_blink_msd_led(1);
             // We erase the chip if we received unrelated data before (mac compatibility)
             if (maybe_erase && (block == theoretical_start_sector)) {
                 // avoid erasing the internal flash if only the external flash will be updated

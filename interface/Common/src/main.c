@@ -84,11 +84,9 @@ OS_TID serial_task_id;
 // USB busy LED state; when TRUE the LED will flash once using 30mS clock tick
 static uint8_t dap_led_usb_activity = 0;
 static uint8_t cdc_led_usb_activity = 0;
-static uint8_t msd_led_usb_activity = 0;
 
 static LED_STATE dap_led_state = LED_FLASH;
 static LED_STATE cdc_led_state = LED_FLASH;
-static LED_STATE msd_led_state = LED_FLASH;
 
 static uint8_t send_uID = 0;
 
@@ -140,12 +138,6 @@ void main_blink_cdc_led(uint8_t permanent) {
     return;
 }
 
-// Flash MSD LED using 30mS tick
-void main_blink_msd_led(uint8_t permanent) {
-    msd_led_usb_activity=1;
-    msd_led_state = (permanent) ? LED_FLASH_PERMANENT : LED_FLASH;
-    return;
-}
 
 // MSC data transfer in progress
 void main_usb_busy_event(void) {
@@ -240,7 +232,6 @@ __task void main_task(void) {
     // LED
     uint8_t dap_led_value = 1;
     uint8_t cdc_led_value = 1;
-    uint8_t msd_led_value = 1;
 
     // USB
     uint32_t usb_state_count;
@@ -265,7 +256,6 @@ __task void main_task(void) {
     // Turn off LED
     gpio_set_dap_led(1);
     gpio_set_cdc_led(1);
-    gpio_set_msd_led(1);
 
     usbd_init();
     swd_init();
@@ -350,7 +340,6 @@ __task void main_task(void) {
             // Turn off LED
             gpio_set_dap_led(0);
             gpio_set_cdc_led(0);
-            gpio_set_msd_led(0);
 
             // TODO: put the interface chip in sleep mode
             while (1) {    }
@@ -452,20 +441,6 @@ __task void main_task(void) {
                 gpio_set_dap_led(dap_led_value);
             }
 
-            if (msd_led_usb_activity && ((msd_led_state == LED_FLASH) || (msd_led_state == LED_FLASH_PERMANENT))) {
-                // Flash MSD LED ONCE
-                if (msd_led_value) {
-                    msd_led_value = 0;
-                } else {
-                    msd_led_value = 1; // Turn on
-                    if (msd_led_state == LED_FLASH) {
-                        msd_led_usb_activity = 0;
-                    }
-                }
-
-                // Update hardware
-                gpio_set_msd_led(msd_led_value);
-            }
 
             if (cdc_led_usb_activity && ((cdc_led_state == LED_FLASH) || (cdc_led_state == LED_FLASH_PERMANENT))) {
                 // Flash CDC LED ONCE
