@@ -855,7 +855,6 @@ uint8_t connect_on_reset(void)
     uint32_t tmp = 0;
     uint32_t tmpid = 0;    
     uint32_t val;
-    uint8_t  rc = Target_UNKNOWN;    
 
     DAP_Setup();
     PORT_SWD_SETUP();
@@ -922,7 +921,6 @@ uint8_t swd_init_get_target(void) {
     volatile uint32_t i = 0 ;
     uint32_t tmp = 0;
     uint32_t tmpid = 0;
-    uint8_t  rc = Target_UNKNOWN;
     // init dap state with fake values
     dap_state.select = 0xffffffff;
     dap_state.csw = 0xffffffff;

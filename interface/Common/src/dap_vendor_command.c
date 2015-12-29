@@ -22,6 +22,10 @@
 #include "DAP_config.h"
 #include "uart.h"
 #include "DAP.h"
+#include "board.h"
+#include "target_ids.h"
+#include "swd_host.h"
+
 
 // Process DAP Vendor command and prepare response
 // Default function (can be overridden)
@@ -35,6 +39,33 @@ uint32_t DAP_ProcessVendorCommand(uint8_t *request, uint8_t *response) {
     if (*request == ID_DAP_Vendor0) {
         uint8_t * id_str = get_uid_string();
         uint8_t len = strlen((const char *)(id_str + 4));
+        uint8_t targetID = swd_init_get_target();
+        
+        if(targetID == Target_NRF51822)
+        {
+            memcpy(board.id, "1070", 4);
+            set_already_unique_id(0);
+            update_html_file();
+        }
+        if(targetID == Target_STM32F103)
+        {
+           memcpy(board.id, "1080", 4);
+           set_already_unique_id(0);
+           update_html_file();
+        }
+        if(targetID == Target_STM32F051)
+        {
+           memcpy(board.id, "1090", 4);
+           set_already_unique_id(0);
+           update_html_file();
+        }
+        if(targetID == Target_STM32F405)
+        {
+           memcpy(board.id, "2000", 4);
+           set_already_unique_id(0);
+           update_html_file();
+        }
+        
         *response = ID_DAP_Vendor0;
         *(response + 1) = len;
         memcpy(response + 2, id_str + 4, len);
