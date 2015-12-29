@@ -259,6 +259,16 @@ __task void main_task(void) {
 
     usbd_init();
     swd_init();
+
+    targetID = swd_init_get_target();
+    if(targetID == Target_NRF51822)
+        memcpy(board.id, "1070", 4);
+    if(targetID == Target_STM32F103)
+        memcpy(board.id, "1080", 4);
+    if(targetID == Target_STM32F051)
+        memcpy(board.id, "1090", 4);
+    if(targetID == Target_STM32F405)
+        memcpy(board.id, "2000", 4);
     
     // Setup reset button
     gpio_enable_button_flag(main_task_id, FLAGS_MAIN_RESET);
