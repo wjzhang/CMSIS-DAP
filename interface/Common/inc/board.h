@@ -19,8 +19,8 @@
 #include <stdint.h>
 
 typedef struct {
-    const uint8_t id[4];
-    const uint8_t secret[9];
+    uint8_t id[4];
+    uint8_t secret[9];
 } BOARD;
 
 extern BOARD board;
