@@ -46,40 +46,19 @@ uint32_t DAP_ProcessVendorCommand(uint8_t *request, uint8_t *response) {
         
         if(targetID == Target_NRF51822)
         {
-            if(gpio_get_config(PIN_CONFIG_DT01) == PIN_HIGH)
-            {
-                memcpy(board.id, "1071", 4);
-            }
-            else
-            {
-                memcpy(board.id, "1070", 4);
-            }
+            memcpy(board.id, "1070", 4);
         }
         else if(targetID == Target_STM32F103)
         {
-            if(gpio_get_config(PIN_CONFIG_DT01) == PIN_HIGH)
-            {
-                memcpy(board.id, "1081", 4);
-            }
-            else
-            {
-                memcpy(board.id, "1080", 4);
-            }
+            memcpy(board.id, "1080", 4);
         }
         else if(targetID == Target_STM32F051)
         {
-           memcpy(board.id, "1090", 4);
+            memcpy(board.id, "1090", 4);
         }
         else if(targetID == Target_STM32F405)
         {
-            if(gpio_get_config(PIN_CONFIG_DT01) == PIN_HIGH)
-            {            
-                memcpy(board.id, "2001", 4);
-            }
-            else
-            {
-                memcpy(board.id, "2000", 4);
-            }
+            memcpy(board.id, "2000", 4);
         }
         else if(targetID == Target_STM32F071)
         {
