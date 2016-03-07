@@ -73,7 +73,7 @@ int32_t uart_initialize (void) {
     // reset uart
     uart_reset();
 
-    // enable RX/RX error interrupt
+    // enable RX/Rx error interrupt
     LPC_USART->IER = (0x01 << 0) | (0x1 << 2);
 
     NVIC_EnableIRQ(UART_IRQn);
@@ -339,10 +339,10 @@ int32_t uart_write_data (uint8_t *data, uint16_t size) {
         }
     }
 
+    // enable THRE interrupt
+    LPC_USART->IER |= (0x01 << 1);
 
     if (!tx_in_progress) {
-        // enable THRE interrupt
-        LPC_USART->IER |= (0x01 << 1);
         // force THRE interrupt to start
         NVIC_SetPendingIRQ(UART_IRQn);
     }
