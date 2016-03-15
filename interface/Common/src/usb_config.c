@@ -173,7 +173,7 @@
 #define USBD_MSC_HS_WMAXPACKETSIZE  512
 #define USBD_MSC_HS_BINTERVAL       0
 #define USBD_MSC_STRDESC            L"USB_MSC"
-#define USBD_MSC_INQUIRY_DATA       "MBED    "         \
+#define USBD_MSC_INQUIRY_DATA       "MESH-DBG"         \
                                     "microcontroller " \
                                     "1.0 "
 
