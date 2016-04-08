@@ -25,6 +25,7 @@
 #include "board.h"
 #include "target_ids.h"
 #include "swd_host.h"
+#include "gpio.h"
 
 
 // Process DAP Vendor command and prepare response
@@ -40,31 +41,30 @@ uint32_t DAP_ProcessVendorCommand(uint8_t *request, uint8_t *response) {
         uint8_t * id_str = get_uid_string();
         uint8_t len = strlen((const char *)(id_str + 4));
         uint8_t targetID = swd_init_get_target();
+
+        set_already_unique_id(0);
         
         if(targetID == Target_NRF51822)
         {
             memcpy(board.id, "1070", 4);
-            set_already_unique_id(0);
-            update_html_file();
         }
-        if(targetID == Target_STM32F103)
+        else if(targetID == Target_STM32F103)
         {
-           memcpy(board.id, "1080", 4);
-           set_already_unique_id(0);
-           update_html_file();
+            memcpy(board.id, "1080", 4);
         }
-        if(targetID == Target_STM32F051)
+        else if(targetID == Target_STM32F051)
         {
-           memcpy(board.id, "1090", 4);
-           set_already_unique_id(0);
-           update_html_file();
+            memcpy(board.id, "1090", 4);
         }
-        if(targetID == Target_STM32F405)
+        else if(targetID == Target_STM32F405)
         {
-           memcpy(board.id, "2000", 4);
-           set_already_unique_id(0);
-           update_html_file();
+            memcpy(board.id, "2000", 4);
         }
+        else if(targetID == Target_STM32F071)
+        {
+           memcpy(board.id, "2010", 4);
+        }
+        update_html_file();
         
         *response = ID_DAP_Vendor0;
         *(response + 1) = len;

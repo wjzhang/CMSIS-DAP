@@ -226,11 +226,11 @@ static __inline void PORT_JTAG_SETUP (void) {
  
 /** Setup SWD I/O pins: SWCLK, SWDIO, and nRESET.
 Configures the DAP Hardware I/O pins for Serial Wire Debug (SWD) mode:
- - SWCLK, SWDIO, nRESET to output mode and set to default high level.
+ - SWCLK, SWDIO, nRESET to output mode and set SWDIO to default high level, SWCLK to default low level.
  - TDI, TMS, nTRST to HighZ mode (pins are unused in SWD mode).
 */
 static __inline void PORT_SWD_SETUP (void) {
-    LPC_GPIO->SET[0] = PIN_SWCLK;
+    LPC_GPIO->CLR[0] = PIN_SWCLK;
     LPC_GPIO->SET[0] = PIN_SWDIO;
 #if defined(CONF_OPENDRAIN)
     // open drain logic
@@ -249,7 +249,7 @@ Disables the DAP Hardware I/O pins which configures:
 */
 static __inline void PORT_OFF (void) {
     LPC_GPIO->CLR[0] = PIN_SWCLK;
-    LPC_GPIO->CLR[0] = PIN_SWDIO;
+    LPC_GPIO->SET[0] = PIN_SWDIO;
 #if defined(CONF_OPENDRAIN)
     // open drain logic
     LPC_GPIO->DIR[0] &= ~PIN_nRESET; // reset not an output
@@ -485,7 +485,7 @@ Status LEDs. In detail the operation of Hardware I/O and LED pins are enabled an
 */
 static __inline void DAP_SETUP (void) {
     // Configure I/O pins
-	PIN_SWCLK_TCK_IOCON = FUNC_0 | PULL_UP_ENABLED;  // SWCLK/TCK
+	PIN_SWCLK_TCK_IOCON = FUNC_0 | PULL_DOWN_ENABLED;  // SWCLK/TCK
 	PIN_SWDIO_TMS_IOCON = FUNC_0 | PULL_UP_ENABLED;  // SWDIO/TMS
 #if !defined(CONF_OPENDRAIN)
 	PIN_nRESET_IOCON    = FUNC_0 | PULL_UP_ENABLED;  // nRESET

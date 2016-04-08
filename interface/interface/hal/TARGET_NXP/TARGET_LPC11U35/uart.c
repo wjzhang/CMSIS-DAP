@@ -53,7 +53,7 @@ int32_t uart_initialize (void) {
     LPC_IOCON->PIO0_18 |= 0x01; // RXD
     LPC_IOCON->PIO0_19 |= 0x01; // TXD
 	// alternate function USART RTS/CTS and PullUp
-	if(gpio_get_config(PIN_CONFIG_UART) == PIN_HIGH)
+	if(gpio_get_config(PIN_CONFIG_DT01) == PIN_HIGH)
 	{	
         LPC_IOCON->PIO0_7  = 0x11; // CTS
         LPC_IOCON->PIO0_17 = 0x11; // RTS
@@ -65,7 +65,7 @@ int32_t uart_initialize (void) {
     // Transmit Enable
     LPC_USART->TER     = 0x80;
     
-	if(gpio_get_config(PIN_CONFIG_UART) == PIN_HIGH)
+	if(gpio_get_config(PIN_CONFIG_DT01) == PIN_HIGH)
 	{
         // Set RTS/CTS
         LPC_USART->MCR = (0x01 << 7) | (0x01 << 6); // Enable RTS and CTS flow control 
@@ -73,7 +73,7 @@ int32_t uart_initialize (void) {
     // reset uart
     uart_reset();
 
-    // enable RX/RX error interrupt
+    // enable RX/Rx error interrupt
     LPC_USART->IER = (0x01 << 0) | (0x1 << 2);
 
     NVIC_EnableIRQ(UART_IRQn);
@@ -146,7 +146,7 @@ int32_t uart_set_configuration (UART_Configuration *config) {
     // reset uart
     uart_reset();
 
-	if(gpio_get_config(PIN_CONFIG_UART) == PIN_HIGH)
+	if(gpio_get_config(PIN_CONFIG_DT01) == PIN_HIGH)
 	{
         //clear RTS
         LPC_USART->MCR = (0x01 << 1);  
@@ -225,7 +225,7 @@ int32_t uart_set_configuration (UART_Configuration *config) {
                    | (parity << 3);
 
 
-	if(gpio_get_config(PIN_CONFIG_UART) == PIN_HIGH)
+	if(gpio_get_config(PIN_CONFIG_DT01) == PIN_HIGH)
 	{
         // Set RTS/CTS
         LPC_USART->MCR = (0x01 << 7) | (0x01 << 6); // Enable RTS and CTS flow control
@@ -339,10 +339,10 @@ int32_t uart_write_data (uint8_t *data, uint16_t size) {
         }
     }
 
+    // enable THRE interrupt
+    LPC_USART->IER |= (0x01 << 1);
 
     if (!tx_in_progress) {
-        // enable THRE interrupt
-        LPC_USART->IER |= (0x01 << 1);
         // force THRE interrupt to start
         NVIC_SetPendingIRQ(UART_IRQn);
     }

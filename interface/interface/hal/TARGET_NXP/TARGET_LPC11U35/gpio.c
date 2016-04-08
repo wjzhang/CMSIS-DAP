@@ -124,7 +124,7 @@ uint8_t gpio_get_config(uint8_t cfgid)
     uint8_t rc = 0;
 	switch (cfgid)
 	{
-        case PIN_CONFIG_UART:
+        case PIN_CONFIG_DT01:
             rc = gpio_get_config0();
             break;
 

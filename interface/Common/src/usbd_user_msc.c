@@ -196,7 +196,7 @@ static const mbr_t mbr = {
     .not_used = 0,
     .boot_record_signature = 0x29,
     .volume_id = 0x27021974,
-    .volume_label = {'M','b','e','d',' ','U','S','B',' ',' ',' '},
+    .volume_label = {'M','E','S','H','-','D','B','G',' ',' ',' '},
     .file_system_type = {'F','A','T','1','2',' ',' ',' '},
 
     /* Executable boot code that starts the operating system */
@@ -260,8 +260,8 @@ static const uint8_t fail[] = {
 
 // first 16 of the max 32 (mbr.max_root_dir_entries) root dir entries
 static const uint8_t root_dir1[] = {
-    // volume label "MBED"
-    'M', 'B', 'E', 'D', 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x28, 0x0, 0x0, 0x0, 0x0,
+    // volume label "MESH-DBG"
+    'M', 'E', 'S', 'H', '-', 'D', 'B', 'G', 0x20, 0x20, 0x20, 0x28, 0x0, 0x0, 0x0, 0x0,
     0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x85, 0x75, 0x8E, 0x41, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
 
     // Hidden files to keep mac happy

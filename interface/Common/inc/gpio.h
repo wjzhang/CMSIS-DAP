@@ -18,7 +18,7 @@
 
 enum
 {
-	PIN_CONFIG_UART = 0,
+	PIN_CONFIG_DT01 = 0,
 	PIN_CONFIG_1    = 1,
 	PIN_CONFIG_2    = 2,
 	PIN_CONFIG_3    = 3,	
