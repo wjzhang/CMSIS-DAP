@@ -7,7 +7,7 @@
 
 
 
-#define LINE_SIZE   64
+#define LINE_SIZE   80  //need handle :20xxx data record
 
 #define IHEX_RECORD_MAX_DATA    32
 
@@ -224,6 +224,8 @@ static int ihex_process_data_record(ihex_record_t *r)
             if (ihex_flash_bin()) {
                 return 1;
             }
+            //adjust low address
+            bin_low_address += sizeof(bin_buffer);
         }
     }
 
