@@ -158,7 +158,7 @@ uint8_t target_flash_program_page(uint32_t addr, uint8_t * buf, uint32_t size){
         }
 
         //check is cross sectors
-        nextsectoraddress = targets_flash[targetID].GetSecAddress(currentSecNum+1);
+        nextsectoraddress = targets_flash[targetID].GetSecAddress(currentSecNum) + target_flash_sectorsize();
         if((addr + bytes)  >  nextsectoraddress){
             bytes = nextsectoraddress - addr;
         }
