@@ -99,3 +99,19 @@ unsigned long stm32f405_GetSecAddress (uint16_t sector) {
 	return rc;
 }
 
+unsigned long stm32f405_GetSecLength (uint16_t sector) {
+	unsigned long rc  = 0;
+	if(sector < 4)
+	{
+		rc = 0x4000;  //16KB
+	}
+	else if(sector == 4)
+	{
+		rc = 0x10000;  //64KB
+	}
+	else
+	{
+		rc = 0x20000;  //128KB
+	}
+	return rc;
+}

@@ -20,30 +20,35 @@
 //declare
 uint16_t nrf51_GetSecNum (unsigned long adr);
 unsigned long nrf51_GetSecAddress(uint16_t sector);
+unsigned long nrf51_GetSecLength(uint16_t sector);
 extern const TARGET_FLASH NRF51_flash;
 
 uint16_t stm32f051_GetSecNum (unsigned long adr);
 unsigned long stm32f051_GetSecAddress(uint16_t sector);
+unsigned long stm32f051_GetSecLength(uint16_t sector);
 extern const TARGET_FLASH stm32f051_flash;
 
 uint16_t stm32f103_GetSecNum (unsigned long adr);
 unsigned long stm32f103_GetSecAddress(uint16_t sector);
+unsigned long stm32f103_GetSecLength(uint16_t sector);
 extern const TARGET_FLASH stm32f103_flash;
 
 uint16_t stm32f405_GetSecNum (unsigned long adr);
 unsigned long stm32f405_GetSecAddress (uint16_t sector);
+unsigned long stm32f405_GetSecLength (uint16_t sector);
 extern const TARGET_FLASH stm32f405_flash;
 
 uint16_t stm32f071_GetSecNum (unsigned long adr);
 unsigned long stm32f071_GetSecAddress(uint16_t sector);
+unsigned long stm32f071_GetSecLength(uint16_t sector);
 extern const TARGET_FLASH stm32f071_flash;
 
 static const Target_Flash targets_flash[] ={
-    {nrf51_GetSecNum    , nrf51_GetSecAddress    , &NRF51_flash    },
-    {stm32f051_GetSecNum, stm32f051_GetSecAddress, &stm32f051_flash},
-    {stm32f103_GetSecNum, stm32f103_GetSecAddress, &stm32f103_flash},
-    {stm32f405_GetSecNum, stm32f405_GetSecAddress, &stm32f405_flash},
-    {stm32f071_GetSecNum, stm32f071_GetSecAddress, &stm32f071_flash}   
+    {nrf51_GetSecNum    , nrf51_GetSecAddress    , nrf51_GetSecLength    , &NRF51_flash    },
+    {stm32f051_GetSecNum, stm32f051_GetSecAddress, stm32f051_GetSecLength, &stm32f051_flash},
+    {stm32f103_GetSecNum, stm32f103_GetSecAddress, stm32f103_GetSecLength, &stm32f103_flash},
+    {stm32f405_GetSecNum, stm32f405_GetSecAddress, stm32f405_GetSecLength, &stm32f405_flash},
+    {stm32f071_GetSecNum, stm32f071_GetSecAddress, stm32f071_GetSecLength, &stm32f071_flash}   
 };
 
 
@@ -153,7 +158,7 @@ uint8_t target_flash_program_page(uint32_t addr, uint8_t * buf, uint32_t size){
         }
 
         //check is cross sectors
-        nextsectoraddress = targets_flash[targetID].GetSecAddress(currentSecNum) + target_flash_sectorsize();
+        nextsectoraddress = targets_flash[targetID].GetSecAddress(currentSecNum) + targets_flash[targetID].GetSecLength(currentSecNum);
         if((addr + bytes)  >  nextsectoraddress){
             bytes = nextsectoraddress - addr;
         }

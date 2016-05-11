@@ -68,3 +68,7 @@ unsigned long stm32f103_GetSecAddress(uint16_t sector){
     unsigned long rc = 0x08000000 + (sector << 11);
     return rc;
 }
+
+unsigned long stm32f103_GetSecLength(uint16_t sector){
+        return 0x800; //2048
+}

@@ -73,3 +73,7 @@ unsigned long stm32f051_GetSecAddress(uint16_t sector){
     return rc;
 }
 
+unsigned long stm32f051_GetSecLength(uint16_t sector){
+    return 0x400; //1024
+}
+

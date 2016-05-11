@@ -93,3 +93,20 @@ unsigned long nrf51_GetSecAddress(uint16_t sector){
     return rc;
 }
 
+unsigned long nrf51_GetSecLength(uint16_t sector){
+    unsigned long rc = 0;
+    if(sector >= 257)
+    {
+        rc = 0; //wrong
+    }
+    else if(sector == 256)  //UICR
+    {
+        rc = 0x100;
+    }
+    else  //flash
+    {
+        rc = 0x400; //1024
+    }
+    return rc;
+}
+

@@ -27,6 +27,7 @@
 typedef struct{
     uint16_t           (*GetSecNum)    (unsigned long adr);
     unsigned long      (*GetSecAddress)(uint16_t sector);
+    unsigned long      (*GetSecLength)(uint16_t sector);
     const TARGET_FLASH *flash;
 }Target_Flash;
 
