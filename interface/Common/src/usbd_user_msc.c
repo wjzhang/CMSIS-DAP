@@ -730,9 +730,10 @@ int search_bin_file(uint8_t * root, uint8_t sector) {
                 listen_msc_isr = 0;
 
                 move_sector_start = (begin_sector - start_sector)*MBR_BYTES_PER_SECTOR;
-                nb_sector_to_move = (nb_sector % 2) ? nb_sector/2 + 1 : nb_sector/2;
+                //nb_sector_to_move = (nb_sector % 2) ? nb_sector/2 + 1 : nb_sector/2;
                 flashsectorsize = target_flash_sectorsize();
                 flashbaseaddress = target_flash_baseaddress();
+                nb_sector_to_move = (nb_sector * MBR_BYTES_PER_SECTOR + flashsectorsize - 1 ) / flashsectorsize; 
                 if(flashsectorsize <= 2048) //usb_buffer max is 2KB, normal 1KB
                 {
                     for (i = 0; i < nb_sector_to_move; i++) {							
