@@ -16,11 +16,6 @@
 
 #include "target_flash.h"
 #include "target_ids.h"
-#include <absacc.h>
-#include <string.h>
-
-//compare buffer
-uint8_t  compare_buffer[512] __at(0x20000000 + 0x400);	//usb_buffer at [0x20000000, 0x2000200], bin_buffer at [0x20000200, 0x2000400]
 
 //declare
 uint16_t nrf51_GetSecNum (unsigned long adr);
@@ -168,13 +163,6 @@ uint8_t target_flash_program_page(uint32_t addr, uint8_t * buf, uint32_t size){
                                     addr,                                     // arg1
                                     bytes,                                    // arg2
                                     targets_flash[targetID].flash->program_buffer + bytes_written, 0)) { // arg3, arg4
-            return 0;
-        }
-        //read back flash data
-        if (!swd_read_memory(addr, compare_buffer, bytes)) {
-            return 0;
-        }
-        if(memcmp((void *)compare_buffer, (void *)(buf + bytes_written), bytes) !=0 ){
             return 0;
         }
 				
