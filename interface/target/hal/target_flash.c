@@ -18,29 +18,29 @@
 #include "target_ids.h"
 
 //declare
-uint16_t nrf51_GetSecNum (unsigned long adr);
-unsigned long nrf51_GetSecAddress(uint16_t sector);
-unsigned long nrf51_GetSecLength(uint16_t sector);
+unsigned long nrf51_GetSecNum (unsigned long adr);
+unsigned long nrf51_GetSecAddress(unsigned long sector);
+unsigned long nrf51_GetSecLength(unsigned long sector);
 extern const TARGET_FLASH NRF51_flash;
 
-uint16_t stm32f051_GetSecNum (unsigned long adr);
-unsigned long stm32f051_GetSecAddress(uint16_t sector);
-unsigned long stm32f051_GetSecLength(uint16_t sector);
+unsigned long stm32f051_GetSecNum (unsigned long adr);
+unsigned long stm32f051_GetSecAddress(unsigned long sector);
+unsigned long stm32f051_GetSecLength(unsigned long sector);
 extern const TARGET_FLASH stm32f051_flash;
 
-uint16_t stm32f103_GetSecNum (unsigned long adr);
-unsigned long stm32f103_GetSecAddress(uint16_t sector);
-unsigned long stm32f103_GetSecLength(uint16_t sector);
+unsigned long stm32f103_GetSecNum (unsigned long adr);
+unsigned long stm32f103_GetSecAddress(unsigned long sector);
+unsigned long stm32f103_GetSecLength(unsigned long sector);
 extern const TARGET_FLASH stm32f103_flash;
 
-uint16_t stm32f405_GetSecNum (unsigned long adr);
-unsigned long stm32f405_GetSecAddress (uint16_t sector);
-unsigned long stm32f405_GetSecLength (uint16_t sector);
+unsigned long stm32f405_GetSecNum (unsigned long adr);
+unsigned long stm32f405_GetSecAddress (unsigned long sector);
+unsigned long stm32f405_GetSecLength (unsigned long sector);
 extern const TARGET_FLASH stm32f405_flash;
 
-uint16_t stm32f071_GetSecNum (unsigned long adr);
-unsigned long stm32f071_GetSecAddress(uint16_t sector);
-unsigned long stm32f071_GetSecLength(uint16_t sector);
+unsigned long stm32f071_GetSecNum (unsigned long adr);
+unsigned long stm32f071_GetSecAddress(unsigned long sector);
+unsigned long stm32f071_GetSecLength(unsigned long sector);
 extern const TARGET_FLASH stm32f071_flash;
 
 static const Target_Flash targets_flash[] ={
@@ -96,7 +96,7 @@ uint8_t target_flash_init(uint32_t clk) {
 }
 
 
-uint8_t target_flash_erase_sector(unsigned int sector) {
+uint8_t target_flash_erase_sector(unsigned long sector) {
     uint32_t address = 0;
 
     if(targetID == Target_UNKNOWN){

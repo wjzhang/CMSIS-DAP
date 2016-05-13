@@ -25,16 +25,16 @@
 
 
 typedef struct{
-    uint16_t           (*GetSecNum)    (unsigned long adr);
-    unsigned long      (*GetSecAddress)(uint16_t sector);
-    unsigned long      (*GetSecLength)(uint16_t sector);
+    unsigned long      (*GetSecNum)    (unsigned long adr);
+    unsigned long      (*GetSecAddress)(unsigned long sector);
+    unsigned long      (*GetSecLength) (unsigned long sector);
     const TARGET_FLASH *flash;
 }Target_Flash;
 
 uint8_t target_flash_init(uint32_t clk);
 uint8_t target_flash_uninit(void);
 uint8_t target_flash_erase_chip(void);
-uint8_t target_flash_erase_sector(uint32_t adr);
+uint8_t target_flash_erase_sector(unsigned long sector);
 uint8_t target_flash_program_page(uint32_t adr, uint8_t * buf, uint32_t size);
 
 uint32_t target_flash_autoincrementpagesize(void);

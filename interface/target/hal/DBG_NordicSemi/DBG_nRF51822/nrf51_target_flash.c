@@ -59,54 +59,15 @@ const TARGET_FLASH NRF51_flash = {
     0x00000000                 // flash base address
 };
 
-uint16_t nrf51_GetSecNum (unsigned long adr){
-    uint16_t rc = 0;
-    if((adr >= 0x10001000) && (adr < 0x10001100))  //UICR
-    {
-        rc = 256;  //as page 256
-    }
-    else if(adr < 0x40000)  // flash
-    {
-        rc = (adr >> 10); 
-    }
-    else
-    {
-        rc = 257; //wrong
-    }
-    return rc;
+unsigned long nrf51_GetSecNum (unsigned long adr){
+    return (adr >> 10);  
 }
 
-unsigned long nrf51_GetSecAddress(uint16_t sector){
-    unsigned long rc = 0;
-    if(sector >= 257)
-    {
-        rc = 0xFFFFFFFF; //wrong
-    }
-    else if(sector == 256)  //UICR
-    {
-        rc = 0x10001000;
-    }
-    else  //flash
-    {
-        rc = (sector << 10);
-    }
-    return rc;
+unsigned long nrf51_GetSecAddress(unsigned long sector){
+    return (sector << 10);
 }
 
-unsigned long nrf51_GetSecLength(uint16_t sector){
-    unsigned long rc = 0;
-    if(sector >= 257)
-    {
-        rc = 0; //wrong
-    }
-    else if(sector == 256)  //UICR
-    {
-        rc = 0x100;
-    }
-    else  //flash
-    {
-        rc = 0x400; //1024
-    }
-    return rc;
+unsigned long nrf51_GetSecLength(unsigned long sector){
+    return 0x400; //1024
 }
 

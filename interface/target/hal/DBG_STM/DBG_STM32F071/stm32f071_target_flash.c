@@ -63,16 +63,16 @@ const TARGET_FLASH stm32f071_flash = {
     0x08000000                 // flash base address
 };
 
-uint16_t stm32f071_GetSecNum (unsigned long adr){
-    uint16_t rc = ( (adr - 0x08000000) >> 11); 
+unsigned long stm32f071_GetSecNum (unsigned long adr){
+    unsigned long rc = ( (adr - 0x08000000) >> 11); 
     return rc;
 }
 
-unsigned long stm32f071_GetSecAddress(uint16_t sector){
+unsigned long stm32f071_GetSecAddress(unsigned long sector){
     unsigned long rc = 0x08000000 + (sector << 11);
     return rc;
 }
 
-unsigned long stm32f071_GetSecLength(uint16_t sector){
+unsigned long stm32f071_GetSecLength(unsigned long sector){
     return 0x800;  //2048
 }
