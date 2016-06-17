@@ -889,7 +889,10 @@ void usbd_msc_write_sect (uint32_t block, uint8_t *buf, uint32_t num_of_blocks) 
     {
         return;
     }
-        
+    
+    //blink DAP-led when drag&drop
+    main_blink_dap_led(0);
+    
     //we received the root directory
     if ((block == SECTORS_ROOT_IDX) || (block == (SECTORS_ROOT_IDX+1))) {
         //try to find a valid file
