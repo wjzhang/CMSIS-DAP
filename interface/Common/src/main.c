@@ -90,6 +90,7 @@ static LED_STATE cdc_led_state = LED_FLASH;
 
 static uint8_t send_uID = 0;
 
+extern uint8_t stopCDCLed;
 
 // Global state of usb
 USB_CONNECT usb_state;
@@ -133,6 +134,13 @@ void main_blink_dap_led(uint8_t permanent) {
 
 // Flash Serial LED using 30mS tick
 void main_blink_cdc_led(uint8_t permanent) {
+   if(stopCDCLed == 1)
+    {
+        cdc_led_usb_activity = 0;
+        cdc_led_state = LED_OFF;
+        return;
+    }
+   
     cdc_led_usb_activity=1;
     cdc_led_state = (permanent) ? LED_FLASH_PERMANENT : LED_FLASH;
     return;
