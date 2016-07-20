@@ -56,6 +56,9 @@
 // Used by msd to eject/insert the file system
 #define FLAGS_MAIN_USB_MEDIA_EJECT   (1<<7)
 
+// Used by identification 
+#define FLAGS_LED_IDENTIFY_180MS    (1 << 8)
+
 // Timing constants (in 90mS ticks)
 // USB busy time
 #define USB_BUSY_TIME           (10)
@@ -84,9 +87,12 @@ OS_TID serial_task_id;
 // USB busy LED state; when TRUE the LED will flash once using 30mS clock tick
 static uint8_t dap_led_usb_activity = 0;
 static uint8_t cdc_led_usb_activity = 0;
-
+static uint8_t dap_led_identify_activity = 0;
+static uint8_t cdc_led_identify_activity = 0;
 static LED_STATE dap_led_state = LED_FLASH;
 static LED_STATE cdc_led_state = LED_FLASH;
+static uint8_t dap_led_value = 1;
+static uint8_t cdc_led_value = 1;
 
 static uint8_t send_uID = 0;
 
@@ -111,8 +117,11 @@ __task void timer_task_30mS(void) {
     while(1) {
         os_itv_wait();
         os_evt_set(FLAGS_MAIN_30MS, main_task_id);
-        if (!(i++ % 3))
+        i++;
+        if (!(i % 3))
             os_evt_set(FLAGS_MAIN_90MS, main_task_id);
+        if (!(i % 6))
+            os_evt_set(FLAGS_LED_IDENTIFY_180MS, main_task_id);        
     }
 }
 
@@ -127,6 +136,9 @@ void main_reset_target(uint8_t send_unique_id) {
 
 // Flash DAP LED using 30mS tick
 void main_blink_dap_led(uint8_t permanent) {
+   if ( dap_led_identify_activity == 1)
+       return;
+   
     dap_led_usb_activity=1;
     dap_led_state = (permanent) ? LED_FLASH_PERMANENT : LED_FLASH;
     return;
@@ -134,7 +146,10 @@ void main_blink_dap_led(uint8_t permanent) {
 
 // Flash Serial LED using 30mS tick
 void main_blink_cdc_led(uint8_t permanent) {
-   if(stopCDCLed == 1)
+   if ( cdc_led_identify_activity == 1)
+       return;
+   
+   if (stopCDCLed == 1)
     {
         cdc_led_usb_activity = 0;
         cdc_led_state = LED_OFF;
@@ -146,6 +161,24 @@ void main_blink_cdc_led(uint8_t permanent) {
     return;
 }
 
+// Flash DAP/Serail LED
+void main_identification_led(uint8_t on)
+{
+    if (on) {
+        cdc_led_identify_activity = 1;
+        cdc_led_state = LED_FLASH_PERMANENT;
+        dap_led_identify_activity = 1;
+        dap_led_state = LED_FLASH_PERMANENT;
+        dap_led_value = 1;
+        cdc_led_value = 1;          
+    }
+    else {
+        cdc_led_identify_activity = 1;
+        cdc_led_state = LED_FLASH;
+        cdc_led_identify_activity = 1;
+        dap_led_state = LED_FLASH;    
+    }        
+}
 
 // MSC data transfer in progress
 void main_usb_busy_event(void) {
@@ -237,10 +270,6 @@ __task void main_task(void) {
     // State processing
     uint16_t flags;
 
-    // LED
-    uint8_t dap_led_value = 1;
-    uint8_t cdc_led_value = 1;
-
     // USB
     uint32_t usb_state_count;
 
@@ -252,6 +281,10 @@ __task void main_task(void) {
 
     // string containing unique ID
     uint8_t * id_str;
+    
+    // LED
+    dap_led_value = 1;
+    cdc_led_value = 1;    
 
     // Initialize our serial mailbox
     os_mbx_init(&serial_mailbox, sizeof(serial_mailbox));
@@ -299,7 +332,8 @@ __task void main_task(void) {
                         | FLAGS_MAIN_30MS               // 30mS tick
                         | FLAGS_MAIN_POWERDOWN          // Power down interface
                         | FLAGS_MAIN_DISABLEDEBUG       // Power down interface
-                        | FLAGS_MAIN_USB_DISCONNECT,    // Disable target debug
+                        | FLAGS_MAIN_USB_DISCONNECT     // Disable target debug
+                        | FLAGS_LED_IDENTIFY_180MS,     // the identify LED
                         NO_TIMEOUT);
 
         // Find out what event happened
@@ -434,7 +468,7 @@ __task void main_task(void) {
 
         // 30mS tick used for flashing LED when USB is busy
         if (flags & FLAGS_MAIN_30MS) {
-            if (dap_led_usb_activity && ((dap_led_state == LED_FLASH) || (dap_led_state == LED_FLASH_PERMANENT))) {
+            if (dap_led_usb_activity && (!dap_led_identify_activity) && ((dap_led_state == LED_FLASH) || (dap_led_state == LED_FLASH_PERMANENT))) {
                 // Flash DAP LED ONCE
                 if (dap_led_value) {
                     dap_led_value = 0;
@@ -450,7 +484,7 @@ __task void main_task(void) {
             }
 
 
-            if (cdc_led_usb_activity && ((cdc_led_state == LED_FLASH) || (cdc_led_state == LED_FLASH_PERMANENT))) {
+            if (cdc_led_usb_activity && (!cdc_led_identify_activity) && ((cdc_led_state == LED_FLASH) || (cdc_led_state == LED_FLASH_PERMANENT))) {
                 // Flash CDC LED ONCE
                 if (cdc_led_value) {
                     cdc_led_value = 0;
@@ -466,6 +500,38 @@ __task void main_task(void) {
             }
 
         }
+        // 180mS tick used for flashing LED when USB is busy
+        if (flags & FLAGS_LED_IDENTIFY_180MS) {
+            if (dap_led_identify_activity ) {
+                // Flash DAP LED ONCE
+                if (dap_led_value) {
+                    dap_led_value = 0;
+                } else {
+                    dap_led_value = 1; // Turn on
+                    if (dap_led_state == LED_FLASH) {
+                        dap_led_identify_activity = 0;
+                    }
+                }
+
+                // Update hardware
+                gpio_set_dap_led(dap_led_value);
+            }
+
+            if (cdc_led_identify_activity ) {
+                // Flash CDC LED ONCE
+                if (cdc_led_value) {
+                    cdc_led_value = 0;
+                } else {
+                    cdc_led_value = 1; // Turn on
+                    if (cdc_led_state == LED_FLASH) {
+                        cdc_led_identify_activity = 0;
+                    }
+                }
+
+                // Update hardware
+                gpio_set_cdc_led(cdc_led_value);
+            }
+        }        
     }
 }
 
