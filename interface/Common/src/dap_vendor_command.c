@@ -27,6 +27,7 @@
 #include "swd_host.h"
 #include "gpio.h"
 
+void main_identification_led(uint8_t on);
 
 // Process DAP Vendor command and prepare response
 // Default function (can be overridden)
@@ -71,7 +72,10 @@ uint32_t DAP_ProcessVendorCommand(uint8_t *request, uint8_t *response) {
         memcpy(response + 2, id_str + 4, len);
         return (len + 2);
     }
-
+    else if (*request == ID_DAP_Vendor31) {
+        main_identification_led(*(request+1));
+        *response = ID_DAP_Vendor31;        
+    }
     // else return invalid command
     else {
         *response = ID_DAP_Invalid;

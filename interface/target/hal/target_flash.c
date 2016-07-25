@@ -18,32 +18,37 @@
 #include "target_ids.h"
 
 //declare
-uint16_t nrf51_GetSecNum (unsigned long adr);
-unsigned long nrf51_GetSecAddress(uint16_t sector);
+unsigned long nrf51_GetSecNum (unsigned long adr);
+unsigned long nrf51_GetSecAddress(unsigned long sector);
+unsigned long nrf51_GetSecLength(unsigned long sector);
 extern const TARGET_FLASH NRF51_flash;
 
-uint16_t stm32f051_GetSecNum (unsigned long adr);
-unsigned long stm32f051_GetSecAddress(uint16_t sector);
+unsigned long stm32f051_GetSecNum (unsigned long adr);
+unsigned long stm32f051_GetSecAddress(unsigned long sector);
+unsigned long stm32f051_GetSecLength(unsigned long sector);
 extern const TARGET_FLASH stm32f051_flash;
 
-uint16_t stm32f103_GetSecNum (unsigned long adr);
-unsigned long stm32f103_GetSecAddress(uint16_t sector);
+unsigned long stm32f103_GetSecNum (unsigned long adr);
+unsigned long stm32f103_GetSecAddress(unsigned long sector);
+unsigned long stm32f103_GetSecLength(unsigned long sector);
 extern const TARGET_FLASH stm32f103_flash;
 
-uint16_t stm32f405_GetSecNum (unsigned long adr);
-unsigned long stm32f405_GetSecAddress (uint16_t sector);
+unsigned long stm32f405_GetSecNum (unsigned long adr);
+unsigned long stm32f405_GetSecAddress (unsigned long sector);
+unsigned long stm32f405_GetSecLength (unsigned long sector);
 extern const TARGET_FLASH stm32f405_flash;
 
-uint16_t stm32f071_GetSecNum (unsigned long adr);
-unsigned long stm32f071_GetSecAddress(uint16_t sector);
+unsigned long stm32f071_GetSecNum (unsigned long adr);
+unsigned long stm32f071_GetSecAddress(unsigned long sector);
+unsigned long stm32f071_GetSecLength(unsigned long sector);
 extern const TARGET_FLASH stm32f071_flash;
 
 static const Target_Flash targets_flash[] ={
-    {nrf51_GetSecNum    , nrf51_GetSecAddress    , &NRF51_flash    },
-    {stm32f051_GetSecNum, stm32f051_GetSecAddress, &stm32f051_flash},
-    {stm32f103_GetSecNum, stm32f103_GetSecAddress, &stm32f103_flash},
-    {stm32f405_GetSecNum, stm32f405_GetSecAddress, &stm32f405_flash},
-    {stm32f071_GetSecNum, stm32f071_GetSecAddress, &stm32f071_flash}   
+    {nrf51_GetSecNum    , nrf51_GetSecAddress    , nrf51_GetSecLength    , &NRF51_flash    },
+    {stm32f051_GetSecNum, stm32f051_GetSecAddress, stm32f051_GetSecLength, &stm32f051_flash},
+    {stm32f103_GetSecNum, stm32f103_GetSecAddress, stm32f103_GetSecLength, &stm32f103_flash},
+    {stm32f405_GetSecNum, stm32f405_GetSecAddress, stm32f405_GetSecLength, &stm32f405_flash},
+    {stm32f071_GetSecNum, stm32f071_GetSecAddress, stm32f071_GetSecLength, &stm32f071_flash}   
 };
 
 
@@ -91,7 +96,7 @@ uint8_t target_flash_init(uint32_t clk) {
 }
 
 
-uint8_t target_flash_erase_sector(unsigned int sector) {
+uint8_t target_flash_erase_sector(unsigned long sector) {
     uint32_t address = 0;
 
     if(targetID == Target_UNKNOWN){
@@ -136,19 +141,26 @@ uint8_t target_flash_program_page(uint32_t addr, uint8_t * buf, uint32_t size){
    
     while(bytes_written < size) {
         uint32_t bytes;
+        uint32_t nextsectoraddress = 0;
         uint16_t currentSecNum = targets_flash[targetID].GetSecNum(addr);
         if ((0 == flash_is_erase_all) && (currentSecNum != lastSecNum)) {
-            if (!swd_flash_syscall_exec(&targets_flash[targetID].flash->sys_call_param, targets_flash[targetID].flash->erase_sector, addr, 0, 0, 0)) {
+            if(!target_flash_erase_sector(currentSecNum)){
                 return 0;
             }
-            
+						
             lastSecNum = currentSecNum;
         }
-        
-        if (size < targets_flash[targetID].flash->ram_to_flash_bytes_to_be_written) {
-            bytes = size;
+				
+        if ((size - bytes_written) < targets_flash[targetID].flash->ram_to_flash_bytes_to_be_written) {
+            bytes = size - bytes_written;
         } else {
             bytes = targets_flash[targetID].flash->ram_to_flash_bytes_to_be_written;
+        }
+
+        //check is cross sectors
+        nextsectoraddress = targets_flash[targetID].GetSecAddress(currentSecNum) + targets_flash[targetID].GetSecLength(currentSecNum);
+        if((addr + bytes)  >  nextsectoraddress){
+            bytes = nextsectoraddress - addr;
         }
         
         if (!swd_flash_syscall_exec(&targets_flash[targetID].flash->sys_call_param,
@@ -158,8 +170,9 @@ uint8_t target_flash_program_page(uint32_t addr, uint8_t * buf, uint32_t size){
                                     targets_flash[targetID].flash->program_buffer + bytes_written, 0)) { // arg3, arg4
             return 0;
         }
-        bytes_written += targets_flash[targetID].flash->ram_to_flash_bytes_to_be_written;
-        addr += targets_flash[targetID].flash->ram_to_flash_bytes_to_be_written;
+				
+        bytes_written += bytes;
+        addr += bytes;
     }
 
     return 1;    

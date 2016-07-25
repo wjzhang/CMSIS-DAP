@@ -65,8 +65,8 @@ const TARGET_FLASH stm32f405_flash = {
     0x08000000                 // flash base address
 };
 
-uint16_t stm32f405_GetSecNum (unsigned long adr) {
-	uint16_t rc = 0xFFFF;
+unsigned long stm32f405_GetSecNum (unsigned long adr) {
+	unsigned long rc = 0xFFFFFFFF;
 	if(adr >= 0x08000000 && adr < 0x08010000)
 	{
 		rc = (adr - 0x08000000)/0x4000;
@@ -82,7 +82,7 @@ uint16_t stm32f405_GetSecNum (unsigned long adr) {
 	return rc;
 }
 
-unsigned long stm32f405_GetSecAddress (uint16_t sector) {
+unsigned long stm32f405_GetSecAddress (unsigned long sector) {
 	unsigned long rc  = 0x08000000;
 	if(sector < 4)
 	{
@@ -99,3 +99,19 @@ unsigned long stm32f405_GetSecAddress (uint16_t sector) {
 	return rc;
 }
 
+unsigned long stm32f405_GetSecLength (unsigned long sector) {
+	unsigned long rc  = 0;
+	if(sector < 4)
+	{
+		rc = 0x4000;  //16KB
+	}
+	else if(sector == 4)
+	{
+		rc = 0x10000;  //64KB
+	}
+	else
+	{
+		rc = 0x20000;  //128KB
+	}
+	return rc;
+}

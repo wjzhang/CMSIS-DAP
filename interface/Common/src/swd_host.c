@@ -834,9 +834,10 @@ static uint8_t get_target_id(uint32_t coreid)
         if(!swd_read_word(0x40015800, &tmp)){
             rc = Target_UNKNOWN;
         }else{
-            if(tmp == 0x20006440){
+            tmp &= 0x00000FFF; //device ID has 12 bits
+            if(tmp == 0x00000440){
                 rc = Target_STM32F051;
-            }else if(tmp == 0x20006448){
+            }else if(tmp == 0x00000448){
                 rc = Target_STM32F071;
             }else if(tmp == 0x00000000){
                 rc = Target_NRF51822;
