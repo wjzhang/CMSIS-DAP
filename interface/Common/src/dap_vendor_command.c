@@ -41,36 +41,19 @@ uint32_t DAP_ProcessVendorCommand(uint8_t *request, uint8_t *response) {
     if (*request == ID_DAP_Vendor0) {
         uint8_t * id_str = get_uid_string();
         uint8_t len = strlen((const char *)(id_str + 4));
-        uint8_t targetID = swd_init_get_target();
-
-        set_already_unique_id(0);
-        
-        if(targetID == Target_NRF51822)
-        {
-            memcpy(board.id, "1070", 4);
-        }
-        else if(targetID == Target_STM32F103)
-        {
-            memcpy(board.id, "1080", 4);
-        }
-        else if(targetID == Target_STM32F051)
-        {
-            memcpy(board.id, "1090", 4);
-        }
-        else if(targetID == Target_STM32F405)
-        {
-            memcpy(board.id, "2000", 4);
-        }
-        else if(targetID == Target_STM32F071)
-        {
-           memcpy(board.id, "2010", 4);
-        }
-        update_html_file();
         
         *response = ID_DAP_Vendor0;
         *(response + 1) = len;
         memcpy(response + 2, id_str + 4, len);
         return (len + 2);
+    }
+    // get CPU type command
+    else if (*request == ID_DAP_Vendor1) {
+        uint8_t targetID = swd_init_get_target();
+
+        *response = ID_DAP_Vendor1;
+        *(response + 1) = targetID;
+        return 2;
     }
     else if (*request == ID_DAP_Vendor31) {
         main_identification_led(*(request+1));
