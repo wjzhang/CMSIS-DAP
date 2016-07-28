@@ -30,3 +30,14 @@ void read_unique_id(uint32_t * id) {
     *id = result[1] ^ result[2] ^ result[3] ^ result[4];
 }
 
+void read_full_unique_id(uint32_t * id) {
+    // readUID IAP call
+    iap_entry = (IAP) IAP_LOCATION;
+    command[0] = 58;
+    iap_entry (command, result);
+    id[0] = result[1];
+    id[1] = result[2];
+    id[2] = result[3];
+    id[3] = result[4];
+}
+
