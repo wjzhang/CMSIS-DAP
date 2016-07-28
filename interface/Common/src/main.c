@@ -93,6 +93,9 @@ static LED_STATE dap_led_state = LED_FLASH;
 static LED_STATE cdc_led_state = LED_FLASH;
 static uint8_t dap_led_value = 1;
 static uint8_t cdc_led_value = 1;
+static uint16_t dap_led_identify_counter = 0;
+static uint16_t cdc_led_identify_counter = 0;
+
 
 static uint8_t send_uID = 0;
 
@@ -162,22 +165,19 @@ void main_blink_cdc_led(uint8_t permanent) {
 }
 
 // Flash DAP/Serail LED
-void main_identification_led(uint8_t on)
+void main_identification_led(uint16_t time)
 {
-    if (on) {
-        cdc_led_identify_activity = 1;
-        cdc_led_state = LED_FLASH_PERMANENT;
-        dap_led_identify_activity = 1;
-        dap_led_state = LED_FLASH_PERMANENT;
-        dap_led_value = 1;
-        cdc_led_value = 1;          
-    }
-    else {
-        cdc_led_identify_activity = 1;
-        cdc_led_state = LED_FLASH;
-        cdc_led_identify_activity = 1;
-        dap_led_state = LED_FLASH;    
-    }        
+    uint16_t counter = 0;
+    cdc_led_identify_activity = 1;
+    dap_led_identify_activity = 1;
+    dap_led_value = 1;
+    cdc_led_value = 1;
+    
+    counter = time / 180;
+    if ((counter % 2) != 0)
+        counter++;
+    cdc_led_identify_counter = counter;
+    dap_led_identify_counter = counter;    
 }
 
 // MSC data transfer in progress
@@ -508,11 +508,10 @@ __task void main_task(void) {
                     dap_led_value = 0;
                 } else {
                     dap_led_value = 1; // Turn on
-                    if (dap_led_state == LED_FLASH) {
-                        dap_led_identify_activity = 0;
-                    }
                 }
-
+                dap_led_identify_counter--;
+                if (dap_led_identify_counter == 0)
+                    dap_led_identify_activity = 0;        
                 // Update hardware
                 gpio_set_dap_led(dap_led_value);
             }
@@ -523,11 +522,10 @@ __task void main_task(void) {
                     cdc_led_value = 0;
                 } else {
                     cdc_led_value = 1; // Turn on
-                    if (cdc_led_state == LED_FLASH) {
-                        cdc_led_identify_activity = 0;
-                    }
                 }
-
+                cdc_led_identify_counter--;
+                if (cdc_led_identify_counter == 0)
+                    cdc_led_identify_activity = 0;
                 // Update hardware
                 gpio_set_cdc_led(cdc_led_value);
             }
