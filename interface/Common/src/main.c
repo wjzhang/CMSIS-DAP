@@ -169,7 +169,7 @@ void main_identification_led(uint16_t time)
 {
     uint16_t counter = 0;
     cdc_led_identify_activity = 1;
-    dap_led_identify_activity = 1;
+    dap_led_identify_activity = 1;        
     dap_led_value = 1;
     cdc_led_value = 1;
     
@@ -177,7 +177,7 @@ void main_identification_led(uint16_t time)
     if ((counter % 2) != 0)
         counter++;
     cdc_led_identify_counter = counter;
-    dap_led_identify_counter = counter;    
+    dap_led_identify_counter = counter;
 }
 
 // MSC data transfer in progress
@@ -509,11 +509,17 @@ __task void main_task(void) {
                 } else {
                     dap_led_value = 1; // Turn on
                 }
-                dap_led_identify_counter--;
-                if (dap_led_identify_counter == 0)
-                    dap_led_identify_activity = 0;        
-                // Update hardware
-                gpio_set_dap_led(dap_led_value);
+                
+                if (dap_led_identify_counter != 0) {
+                    dap_led_identify_counter--;
+                    // Update hardware
+                    gpio_set_dap_led(dap_led_value);
+                } else {
+                    dap_led_identify_activity = 0; 
+                    dap_led_value = 1; // Turn on
+                    // Update hardware
+                    gpio_set_dap_led(dap_led_value);                    
+                }                
             }
 
             if (cdc_led_identify_activity ) {
@@ -523,11 +529,16 @@ __task void main_task(void) {
                 } else {
                     cdc_led_value = 1; // Turn on
                 }
-                cdc_led_identify_counter--;
-                if (cdc_led_identify_counter == 0)
+                if (cdc_led_identify_counter != 0) {
+                    cdc_led_identify_counter--;
+                    // Update hardware
+                    gpio_set_cdc_led(cdc_led_value);
+                } else {
                     cdc_led_identify_activity = 0;
-                // Update hardware
-                gpio_set_cdc_led(cdc_led_value);
+                    cdc_led_value = 1; // Turn on
+                    // Update hardware
+                    gpio_set_cdc_led(cdc_led_value);                    
+                }                
             }
         }        
     }
