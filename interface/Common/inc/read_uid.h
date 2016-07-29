@@ -19,5 +19,7 @@
 #include <stdint.h>
 
 void read_unique_id(uint32_t * id);
+void read_full_unique_id(uint32_t * id);
+
 
 #endif
