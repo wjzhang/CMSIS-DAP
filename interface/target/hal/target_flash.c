@@ -127,7 +127,7 @@ uint8_t target_flash_erase_chip(void) {
 }
 
 uint8_t target_flash_program_page(uint32_t addr, uint8_t * buf, uint32_t size){
-    static uint16_t lastSecNum = 0xFFFF;
+    static uint32_t lastSecNum = 0xFFFFFFFF;
     uint32_t bytes_written = 0;
 
     if(targetID == Target_UNKNOWN){
@@ -140,9 +140,9 @@ uint8_t target_flash_program_page(uint32_t addr, uint8_t * buf, uint32_t size){
     
    
     while(bytes_written < size) {
-        uint32_t bytes;
+        uint32_t bytes = 0;
         uint32_t nextsectoraddress = 0;
-        uint16_t currentSecNum = targets_flash[targetID].GetSecNum(addr);
+        uint32_t currentSecNum = targets_flash[targetID].GetSecNum(addr);
         if ((0 == flash_is_erase_all) && (currentSecNum != lastSecNum)) {
             if(!target_flash_erase_sector(currentSecNum)){
                 return 0;
