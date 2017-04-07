@@ -1,3 +1,4 @@
+
 /* CMSIS-DAP Interface Firmware
  * Copyright (c) 2009-2013 ARM Limited
  *
@@ -32,3 +33,4 @@ struct FlashDevice const FlashDevice  =  {
   0x000800, 0x000000,         // Sector Size  2 KB (256 Sectors)
   SECTOR_END                  // Marks end of sector table
 };
+
