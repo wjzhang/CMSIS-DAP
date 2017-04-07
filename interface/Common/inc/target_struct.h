@@ -40,6 +40,10 @@ typedef struct {
     const uint32_t * image;
 
     uint32_t ram_to_flash_bytes_to_be_written;
+    
+    uint32_t flash_sector_size;
+    uint32_t auto_increment_page_size;
+    uint32_t flash_base_addr;
 
 } TARGET_FLASH;
 
@@ -49,7 +53,8 @@ typedef enum {
     RESET_RUN,               // Reset target and run normally
     RESET_RUN_WITH_DEBUG,    // Reset target and run with debug enabled (required for semihost)
     NO_DEBUG,                // Disable debug on running target
-    DEBUG                    // Enable debug on running target
+    DEBUG,                    // Enable debug on running target
+    HOLD_PROGRAM              // target already hold and program
 } TARGET_RESET_STATE;
 
 #endif

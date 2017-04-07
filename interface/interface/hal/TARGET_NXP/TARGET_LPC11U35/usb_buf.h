@@ -19,11 +19,14 @@
 #include <absacc.h>
 #include <stdint.h>
 
-uint32_t usb_buffer[FLASH_SECTOR_SIZE/4] __at(0x20000000);
+#if defined(TARGET_LPC11U35)
+/* For Mass storage, each sector is 512 Byte.
+ * and LPC11U35 only 2K. also need buffer for iHex function 
+*/
+#define USB_BUFFER_SIZE			512				//512 bytes per Sector for FAT.
 
-#if defined(TARGET_LPC11U35) && (FLASH_SECTOR_SIZE > 2048)
-  // SRAM block on LPC11U35 is limited to 2KB
-  #error "USB buffer too large for this platform"
+uint32_t usb_buffer[USB_BUFFER_SIZE/4] __at(0x20000000);
+
 #endif
 
-#endif
+#endif  //USB_BUF_H

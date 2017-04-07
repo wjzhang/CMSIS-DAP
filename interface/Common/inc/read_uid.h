@@ -19,9 +19,7 @@
 #include <stdint.h>
 
 void read_unique_id(uint32_t * id);
+void read_full_unique_id(uint32_t * id);
 
-#ifdef BOARD_UBLOX_C027
-void __svc(2) enter_isp(void);
-#endif
 
 #endif

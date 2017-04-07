@@ -21,6 +21,8 @@
 #include "debug_cm.h"
 #include "DAP_config.h"
 #include "DAP.h"
+#include "target_ids.h"
+
 
 // Default NVIC and Core debug base addresses
 // TODO: Read these addresses from ROM.
@@ -48,7 +50,7 @@
 // Some targets require a soft reset for flash programming (RESET_PROGRAM).
 // Otherwise a hardware reset is the default. This will not affect
 // DAP operations as they are controlled by the remote debugger.
-#if defined(BOARD_BAMBINO_210) || defined(BOARD_BAMBINO_210E)
+#if defined(BOARD_MB2100)
 #define CONF_SYSRESETREQ
 #elif defined(BOARD_LPC4337)
 #define CONF_VECTRESET
@@ -101,7 +103,7 @@ static uint8_t swd_transfer_retry(uint32_t req, uint32_t * data) {
 }
 
 
-uint8_t swd_init(void) {
+uint8_t swd_init(void) {  
     DAP_Setup();
     PORT_SWD_SETUP();
     return 1;
@@ -402,6 +404,7 @@ static uint8_t swd_write_byte(uint32_t addr, uint8_t val) {
 // size is in bytes.
 uint8_t swd_read_memory(uint32_t address, uint8_t *data, uint32_t size) {
     uint32_t n;
+    uint32_t tagetautoincrementpagesize = target_flash_autoincrementpagesize();
 
     // Read bytes until word aligned
     while ((size > 0) && (address & 0x3)) {
@@ -416,7 +419,7 @@ uint8_t swd_read_memory(uint32_t address, uint8_t *data, uint32_t size) {
     // Read word aligned blocks
     while (size > 3) {
         // Limit to auto increment page size
-        n = TARGET_AUTO_INCREMENT_PAGE_SIZE - (address & (TARGET_AUTO_INCREMENT_PAGE_SIZE - 1));
+        n = tagetautoincrementpagesize - (address & (tagetautoincrementpagesize - 1));
         if (size < n) {
             n = size & 0xFFFFFFFC; // Only count complete words remaining
         }
@@ -447,6 +450,8 @@ uint8_t swd_read_memory(uint32_t address, uint8_t *data, uint32_t size) {
 // size is in bytes.
 uint8_t swd_write_memory(uint32_t address, uint8_t *data, uint32_t size) {
     uint32_t n;
+    uint32_t tagetautoincrementpagesize = target_flash_autoincrementpagesize();
+
     // Write bytes until word aligned
     while ((size > 0) && (address & 0x3)) {
         if (!swd_write_byte(address, *data)) {
@@ -460,7 +465,7 @@ uint8_t swd_write_memory(uint32_t address, uint8_t *data, uint32_t size) {
     // Write word aligned blocks
     while (size > 3) {
         // Limit to auto increment page size
-        n = TARGET_AUTO_INCREMENT_PAGE_SIZE - (address & (TARGET_AUTO_INCREMENT_PAGE_SIZE - 1));
+        n = tagetautoincrementpagesize - (address & (tagetautoincrementpagesize - 1));
         if (size < n) {
             n = size & 0xFFFFFFFC; // Only count complete words remaining
         }
@@ -812,6 +817,156 @@ static uint8_t swd_init_debug(void) {
     return 1;
 }
 
+static uint8_t get_target_id(uint32_t coreid)
+{
+    uint32_t tmp = 0;    
+    uint8_t  rc = Target_UNKNOWN;
+     //check IDCODE:
+    if(coreid == 0x2BA01477){
+        //cortex-M4
+        rc = Target_STM32F405;
+    }else if(coreid == 0x1BA01477){
+        //cortex-M3
+        rc = Target_STM32F103;
+    }else if(coreid == 0x0BB11477){
+        //cortex-M0
+        //check 0x40015800 address: 
+        if(!swd_read_word(0x40015800, &tmp)){
+            rc = Target_UNKNOWN;
+        }else{
+            tmp &= 0x00000FFF; //device ID has 12 bits
+            if(tmp == 0x00000440){
+                rc = Target_STM32F051;
+            }else if(tmp == 0x00000448){
+                rc = Target_STM32F071;
+            }else if(tmp == 0x00000000){
+                rc = Target_NRF51822;
+            }else{
+                rc = Target_UNKNOWN;
+            }
+        }
+    }   
+    
+    return rc;
+}
+
+uint8_t connect_on_reset(void)
+{
+    volatile uint32_t i = 0 ;
+    uint32_t tmp = 0;
+    uint32_t tmpid = 0;    
+    uint32_t val;
+
+    DAP_Setup();
+    PORT_SWD_SETUP();
+
+    //add Reset Pin
+    swd_set_target_reset(1);
+    os_dly_wait(1);
+    swd_set_target_reset(0);
+    //need wait 500us
+    for( i = 0; i < 1200; i++) {}
+
+   //init SWD sequence and get IDcode
+    if (!swd_reset()) {
+        return Target_UNKNOWN;
+    }
+    if (!swd_switch(0xE79E)) {
+        return Target_UNKNOWN;
+    }
+    if (!swd_reset()) {
+        return Target_UNKNOWN;
+    }
+    if (!swd_read_idcode(&tmpid)) {
+        return Target_UNKNOWN;
+    }
+
+    if (!swd_write_dp(DP_ABORT, STKCMPCLR | STKERRCLR | WDERRCLR | ORUNERRCLR)) {
+        return Target_UNKNOWN;
+    }
+
+    // Ensure CTRL/STAT register selected in DPBANKSEL
+    if (!swd_write_dp(DP_SELECT, 0)) {
+        return Target_UNKNOWN;
+    }
+
+    // Power up
+    if (!swd_write_dp(DP_CTRL_STAT, CSYSPWRUPREQ | CDBGPWRUPREQ)) {
+        return Target_UNKNOWN;
+    }
+
+    do {
+        if (!swd_read_dp(DP_CTRL_STAT, &tmp)) {
+            return Target_UNKNOWN;
+        }
+    } while ((tmp & (CDBGPWRUPACK | CSYSPWRUPACK)) != (CDBGPWRUPACK | CSYSPWRUPACK));
+
+   
+    //halt CPU
+    // Enable halt on reset
+    if (!swd_write_word(DBG_HCSR, DBGKEY | C_DEBUGEN | C_HALT)) {
+        return Target_UNKNOWN;
+    }
+    //wait to halt
+    do {
+        if (!swd_read_word(DBG_HCSR, &val)) {
+            return Target_UNKNOWN;
+        }
+    } while((val & S_HALT) == 0);  
+ 
+    // core ID -> target ID    
+    return get_target_id(tmpid);
+}
+    
+uint8_t swd_init_get_target(void) {
+    volatile uint32_t i = 0 ;
+    uint32_t tmp = 0;
+    uint32_t tmpid = 0;
+    // init dap state with fake values
+    dap_state.select = 0xffffffff;
+    dap_state.csw = 0xffffffff;
+
+    DAP_Setup();
+    PORT_SWD_SETUP();
+
+    //init SWD sequence and get IDcode
+    if (!swd_reset()) {
+        return Target_UNKNOWN;
+    }
+    if (!swd_switch(0xE79E)) {
+        return Target_UNKNOWN;
+    }
+    if (!swd_reset()) {
+        return Target_UNKNOWN;
+    }
+    if (!swd_read_idcode(&tmpid)) {
+        return Target_UNKNOWN;
+    }
+
+    //need do some clear
+    if (!swd_write_dp(DP_ABORT, STKCMPCLR | STKERRCLR | WDERRCLR | ORUNERRCLR)) {
+        return Target_UNKNOWN;
+    }
+
+    // Ensure CTRL/STAT register selected in DPBANKSEL
+    if (!swd_write_dp(DP_SELECT, 0)) {
+        return Target_UNKNOWN;
+    }  
+
+    // Power up
+    if (!swd_write_dp(DP_CTRL_STAT, CSYSPWRUPREQ | CDBGPWRUPREQ)) {
+        return Target_UNKNOWN;
+    }    
+ 
+    do {
+        if (!swd_read_dp(DP_CTRL_STAT, &tmp)) {
+            return Target_UNKNOWN;
+        }
+    } while ((tmp & (CDBGPWRUPACK | CSYSPWRUPACK)) != (CDBGPWRUPACK | CSYSPWRUPACK));
+    
+    // core ID -> target ID
+    return get_target_id(tmpid);   
+}
 
 void swd_set_target_reset(uint8_t asserted) {
     if (asserted) {
@@ -821,6 +976,7 @@ void swd_set_target_reset(uint8_t asserted) {
     }
 }
 
+
 uint8_t swd_set_target_state(TARGET_RESET_STATE state) {
     uint32_t val;
     switch (state) {
@@ -829,11 +985,26 @@ uint8_t swd_set_target_state(TARGET_RESET_STATE state) {
             break;
 
         case RESET_RUN:
+#if defined(SOFT_RESET)        
+            if (!swd_init_debug()) {
+                return 0;
+            }         
+			if(targetID == Target_NRF51822){			
+                //enable debug
+				swd_write_word(DBG_HCSR, DBGKEY | C_DEBUGEN);
+				//disable halt reset
+				swd_write_word(DBG_EMCR, 0);
+            }		
+            //SysReset
+            swd_write_word(NVIC_AIRCR, VECTKEY | SOFT_RESET);
+						
+#else                     
             swd_set_target_reset(1);
             os_dly_wait(2);
 
             swd_set_target_reset(0);
             os_dly_wait(2);
+#endif
             break;
 
         case RESET_RUN_WITH_DEBUG:
@@ -854,11 +1025,17 @@ uint8_t swd_set_target_state(TARGET_RESET_STATE state) {
             }
 
             // Reset again
-            swd_set_target_reset(1);
-            os_dly_wait(1);
+            if(targetID != Target_NRF51822){
+                swd_set_target_reset(1);
+                os_dly_wait(1);
 
-            swd_set_target_reset(0);
-            os_dly_wait(1);
+                swd_set_target_reset(0);
+                os_dly_wait(1);
+            }else{
+                if (!swd_write_word(NVIC_AIRCR, VECTKEY | SOFT_RESET)) {
+                    return 0;
+                }
+            }
             break;
 
         case RESET_PROGRAM:
@@ -886,10 +1063,13 @@ uint8_t swd_set_target_state(TARGET_RESET_STATE state) {
             }
 
             // Reset again
-            swd_set_target_reset(1);
-            os_dly_wait(2);
+            if(targetID != Target_NRF51822){
+                swd_set_target_reset(1);
+                os_dly_wait(2);
 
-            swd_set_target_reset(0);
+                swd_set_target_reset(0);
+            }
+
 #else            
             if (!swd_init_debug()) {
                 return 0;
@@ -941,7 +1121,12 @@ uint8_t swd_set_target_state(TARGET_RESET_STATE state) {
         case DEBUG:
             DAP_Setup();
             PORT_SWD_SETUP();
-
+            //add hardware reset first
+            swd_set_target_reset(1);
+            os_dly_wait(2);
+            swd_set_target_reset(0);
+            //end
+        
             if (!JTAG2SWD()) {
                 return 0;
             }
@@ -965,6 +1150,31 @@ uint8_t swd_set_target_state(TARGET_RESET_STATE state) {
                 return 0;
             }
 
+            break;
+            
+        case HOLD_PROGRAM:
+            // Enable halt on reset
+            if (!swd_write_word(DBG_EMCR, VC_CORERESET)) {
+                return 0;
+            }
+
+	        // Perform a soft reset
+            if (!swd_write_word(NVIC_AIRCR, VECTKEY | SOFT_RESET)) {
+                return 0;
+            }
+
+            os_dly_wait(2);
+
+            do {
+                if (!swd_read_word(DBG_HCSR, &val)) {
+                    return 0;
+                }
+            } while((val & S_HALT) == 0);
+
+            // Disable halt on reset
+            if (!swd_write_word(DBG_EMCR, 0)) {
+                return 0;
+            }
             break;
 
         default:

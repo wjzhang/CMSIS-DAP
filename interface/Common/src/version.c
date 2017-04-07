@@ -233,3 +233,9 @@ uint8_t update_html_file(void) {
     memset(usb_buffer+i, ' ', 512 - i);
     return 1;  // Success
 }
+
+void set_already_unique_id(uint8_t value)
+{
+    already_unique_id = value;
+    return;
+}

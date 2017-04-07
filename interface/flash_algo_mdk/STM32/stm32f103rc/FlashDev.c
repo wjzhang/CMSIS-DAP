@@ -1,3 +1,4 @@
+
 /* CMSIS-DAP Interface Firmware
  * Copyright (c) 2009-2013 ARM Limited
  *
@@ -22,13 +23,14 @@ struct FlashDevice const FlashDevice  =  {
    ONCHIP,                     // Device Type
    0x08000000,                 // Flash start address
    0x00080000,                 // Flash total size (512KB )
-   2048,                       // Programming Page Size
+   2048,                        // Programming Page Size
    0,                          // Reserved, must be 0
    0xFF,                       // Initial Content of Erased Memory
    500,                        // Program Page Timeout 100 mSec
    5000,                       // Erase Sector Timeout 3000 mSec
 	
 															// Specify Size and Address of Sectors
-  0x00000800, 0x00000000,     // Sector Size  2 KB (256 Sectors)
+  0x000800, 0x000000,         // Sector Size  2 KB (256 Sectors)
   SECTOR_END                  // Marks end of sector table
 };
+

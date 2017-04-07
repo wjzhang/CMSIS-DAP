@@ -26,5 +26,7 @@ uint8_t update_html_file          (void);
 uint8_t * get_uid_string          (void);
 uint8_t   get_len_string_interface(void);
 uint8_t * get_uid_string_interface(void);
+void set_already_unique_id(uint8_t value);
+
 
 #endif

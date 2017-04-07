@@ -22,6 +22,13 @@
 #include "DAP_config.h"
 #include "uart.h"
 #include "DAP.h"
+#include "board.h"
+#include "target_ids.h"
+#include "swd_host.h"
+#include "gpio.h"
+#include "read_uid.h"
+
+void main_identification_led(uint16_t time);
 
 // Process DAP Vendor command and prepare response
 // Default function (can be overridden)
@@ -35,12 +42,34 @@ uint32_t DAP_ProcessVendorCommand(uint8_t *request, uint8_t *response) {
     if (*request == ID_DAP_Vendor0) {
         uint8_t * id_str = get_uid_string();
         uint8_t len = strlen((const char *)(id_str + 4));
+        
         *response = ID_DAP_Vendor0;
         *(response + 1) = len;
         memcpy(response + 2, id_str + 4, len);
         return (len + 2);
     }
+    // get CPU type command
+    else if (*request == ID_DAP_Vendor1) {
+        uint8_t targetID = swd_init_get_target();
 
+        *response = ID_DAP_Vendor1;
+        *(response + 1) = targetID;
+        return 2;
+    }
+    else if (*request == ID_DAP_Vendor2) {
+        uint32_t fullUniqueId[4];
+        read_full_unique_id(fullUniqueId);
+
+        *response = ID_DAP_Vendor2;
+        *(response + 1) = 16;
+        memcpy(response + 2, (uint8_t *)fullUniqueId, 16);
+        return (16 + 2);
+    }
+    else if (*request == ID_DAP_Vendor31) {
+        uint16_t time = request[1]  | (request[2] << 8) ;
+        main_identification_led(time);
+        *response = ID_DAP_Vendor31;        
+    }
     // else return invalid command
     else {
         *response = ID_DAP_Invalid;
